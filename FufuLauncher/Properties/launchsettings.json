@@ -1,0 +1,10 @@
+﻿{
+    "profiles": {
+      "FufuLauncher (Package)": {
+        "commandName": "MsixPackage"
+      },
+      "FufuLauncher (Unpackaged)": {
+        "commandName": "Project"
+      }
+    }
+}
