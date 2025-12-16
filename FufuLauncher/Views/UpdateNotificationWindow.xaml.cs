@@ -6,19 +6,19 @@ namespace FufuLauncher.Views;
 
 public sealed partial class UpdateNotificationWindow : WindowEx
 {
-    public UpdateNotificationWindow()
+    // 修改构造函数，接受更新公告URL参数
+    public UpdateNotificationWindow(string updateInfoUrl)
     {
         InitializeComponent();
 
         this.ExtendsContentIntoTitleBar = true;
         this.SetTitleBar(AppTitleBar);
 
-        UpdateWebView.Source = new Uri("https://philia093.cyou/Update.html");
+        // 使用传入的动态URL加载公告
+        UpdateWebView.Source = new Uri(updateInfoUrl);
 
         this.CenterOnScreen();
-
         this.SystemBackdrop = new DesktopAcrylicBackdrop();
-
         this.IsShownInSwitchers = true;
     }
 

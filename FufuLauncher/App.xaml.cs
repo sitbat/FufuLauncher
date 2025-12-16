@@ -309,12 +309,12 @@ public partial class App : Application
 
             if (result.ShouldShowUpdate)
             {
-                
                 Debug.WriteLine($"准备显示更新窗口，版本: {result.ServerVersion}");
+                Debug.WriteLine($"[App] 动态更新公告URL: {result.UpdateInfoUrl}");
 
                 MainWindow.Activate();
-
-                var updateWindow = new Views.UpdateNotificationWindow();
+                
+                var updateWindow = new Views.UpdateNotificationWindow(result.UpdateInfoUrl);
                 updateWindow.Title = $"版本更新公告 - v{result.ServerVersion}";
                 updateWindow.Activate();
             }
@@ -322,6 +322,7 @@ public partial class App : Application
         catch (Exception ex)
         {
             Debug.WriteLine($"更新检查失败: {ex.Message}");
+            Debug.WriteLine($"[App] 异常详情: {ex.StackTrace}");
         }
     }
     private async Task VerifyResourceFilesAsync()
