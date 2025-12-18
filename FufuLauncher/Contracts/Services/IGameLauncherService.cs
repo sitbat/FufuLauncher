@@ -14,5 +14,6 @@ namespace FufuLauncher.Contracts.Services
         Task SetCustomLaunchParametersAsync(string parameters);
         
         Task<LaunchResult> LaunchGameAsync();
+        Task StopBetterGIAsync();
     }
 }

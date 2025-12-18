@@ -63,6 +63,10 @@ namespace FufuLauncher.ViewModels
         private string _backgroundCacheFolderPath;
         [ObservableProperty] 
         private bool _isShortTermSupportEnabled;
+        [ObservableProperty]
+        private bool _isBetterGIIntegrationEnabled;
+        [ObservableProperty]
+        private bool _isBetterGICloseOnExitEnabled;
 
         public IAsyncRelayCommand OpenBackgroundCacheFolderCommand { get; }
 
@@ -215,6 +219,8 @@ namespace FufuLauncher.ViewModels
             OnPropertyChanged(nameof(HasCustomBackground));
             OnPropertyChanged(nameof(IsAcrylicEnabled));
             OnPropertyChanged(nameof(IsShortTermSupportEnabled));
+            OnPropertyChanged(nameof(IsBetterGIIntegrationEnabled));
+            OnPropertyChanged(nameof(IsBetterGICloseOnExitEnabled));
     
             _isInitializing = false;
         }
@@ -248,6 +254,12 @@ namespace FufuLauncher.ViewModels
             var shortTermJson = await _localSettingsService.ReadSettingAsync("IsShortTermSupportEnabled");
             IsShortTermSupportEnabled = shortTermJson != null && Convert.ToBoolean(shortTermJson);
             
+            var betterGIJson = await _localSettingsService.ReadSettingAsync("IsBetterGIIntegrationEnabled");
+            IsBetterGIIntegrationEnabled = betterGIJson != null && Convert.ToBoolean(betterGIJson);
+            
+            var betterGICloseJson = await _localSettingsService.ReadSettingAsync("IsBetterGICloseOnExitEnabled");
+            IsBetterGICloseOnExitEnabled = betterGICloseJson != null && Convert.ToBoolean(betterGICloseJson);
+
             var soundJson = await _localSettingsService.ReadSettingAsync("IsStartupSoundEnabled");
             IsStartupSoundEnabled = soundJson != null && Convert.ToBoolean(soundJson);
 
@@ -484,6 +496,17 @@ namespace FufuLauncher.ViewModels
                 _ = _localSettingsService.SaveSettingAsync("IsShortTermSupportEnabled", value);
                 _ = SwitchInjectionModuleAsync(value);
             }
+        }
+
+        partial void OnIsBetterGIIntegrationEnabledChanged(bool value)
+        {
+            Debug.WriteLine($"SettingsViewModel: BetterGI联动设置变更为 {value}");
+            _ = _localSettingsService.SaveSettingAsync("IsBetterGIIntegrationEnabled", value);
+        }
+        partial void OnIsBetterGICloseOnExitEnabledChanged(bool value)
+        {
+            Debug.WriteLine($"SettingsViewModel: BetterGI 关闭随游戏退出设置变更为 {value}");
+            _ = _localSettingsService.SaveSettingAsync("IsBetterGICloseOnExitEnabled", value);
         }
 
 private async Task SwitchInjectionModuleAsync(bool enableShortTerm)

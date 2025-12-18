@@ -10,7 +10,10 @@ namespace FufuLauncher.Services
 
     public class LaunchResult
     {
-        public bool Success { get; set; }
+        public bool Success
+        {
+            get; set;
+        }
         public string ErrorMessage { get; set; } = string.Empty;
         public string DetailLog { get; set; } = string.Empty;
     }
@@ -26,7 +29,7 @@ namespace FufuLauncher.Services
         private bool _lastUseInjection;
 
         public GameLauncherService(
-            ILocalSettingsService localSettingsService, 
+            ILocalSettingsService localSettingsService,
             IGameConfigService gameConfigService,
             ILauncherService launcherService)
         {
@@ -55,16 +58,16 @@ namespace FufuLauncher.Services
         {
             var pathObj = _localSettingsService.ReadSettingAsync(GamePathKey).Result;
             string path = pathObj?.ToString() ?? string.Empty;
-    
+
             if (!string.IsNullOrEmpty(path))
             {
                 path = path.Trim('"').Trim();
             }
-    
+
             Debug.WriteLine($"[启动服务] 读取路径: '{path}'");
             Debug.WriteLine($"[启动服务] 包含非ASCII字符: {path.Any(c => c > 127)}");
             Debug.WriteLine($"[启动服务] Unicode转义: {string.Join(" ", path.Select(c => ((int)c).ToString("X4")))}");
-    
+
             return path;
         }
 
@@ -74,7 +77,7 @@ namespace FufuLauncher.Services
             {
                 path = path.Trim('"').Trim();
             }
-            
+
             await _localSettingsService.SaveSettingAsync(GamePathKey, path);
             Trace.WriteLine($"[启动服务] 保存路径: '{path}'");
         }
@@ -112,18 +115,18 @@ namespace FufuLauncher.Services
         {
             var result = new LaunchResult { Success = false, ErrorMessage = "未知错误", DetailLog = "" };
             var logBuilder = new System.Text.StringBuilder();
-            
+
             try
             {
                 logBuilder.AppendLine("[启动流程] 开始启动游戏");
-                
+
                 var gamePath = GetGamePath();
                 logBuilder.AppendLine($"[启动流程] 游戏路径: {gamePath}");
-                
+
                 if (string.IsNullOrEmpty(gamePath) || !Directory.Exists(gamePath))
                 {
                     result.ErrorMessage = "游戏路径无效或不存在";
-                    logBuilder.AppendLine($"[启动流程] ❌ 错误: {result.ErrorMessage}");
+                    logBuilder.AppendLine($"[启动流程] ? 错误: {result.ErrorMessage}");
                     result.DetailLog = logBuilder.ToString();
                     return result;
                 }
@@ -134,11 +137,11 @@ namespace FufuLauncher.Services
                     gameExePath = Path.Combine(gamePath, "YuanShen.exe");
                     logBuilder.AppendLine($"[启动流程] 尝试备用路径: {gameExePath}");
                 }
-                    
+
                 if (!File.Exists(gameExePath))
                 {
                     result.ErrorMessage = $"游戏主程序不存在\n查找路径:\n- {Path.Combine(gamePath, "GenshinImpact.exe")}\n- {Path.Combine(gamePath, "YuanShen.exe")}";
-                    logBuilder.AppendLine($"[启动流程] ❌ 错误: {result.ErrorMessage}");
+                    logBuilder.AppendLine($"[启动流程] ? 错误: {result.ErrorMessage}");
                     result.DetailLog = logBuilder.ToString();
                     return result;
                 }
@@ -149,17 +152,17 @@ namespace FufuLauncher.Services
                 if (config == null)
                 {
                     result.ErrorMessage = "无法加载游戏配置文件";
-                    logBuilder.AppendLine($"[启动流程] ❌ 错误: {result.ErrorMessage}");
+                    logBuilder.AppendLine($"[启动流程] ? 错误: {result.ErrorMessage}");
                     result.DetailLog = logBuilder.ToString();
                     return result;
                 }
 
                 var arguments = BuildLaunchArguments(config);
                 logBuilder.AppendLine($"[启动流程] 启动参数: {arguments}");
-                
+
                 bool useInjection = await GetUseInjectionAsync();
                 logBuilder.AppendLine($"[启动流程] 注入模式: {(useInjection ? "启用" : "禁用")}");
-                
+
                 bool gameStarted = false;
                 string errorDetail = "";
 
@@ -167,7 +170,7 @@ namespace FufuLauncher.Services
                 {
                     var dllPath = _launcherService.GetDefaultDllPath();
                     logBuilder.AppendLine($"[启动流程] 注入DLL路径: {dllPath}");
-                    
+
                     if (File.Exists(dllPath))
                     {
                         int injectResult = _launcherService.LaunchGameAndInject(gameExePath, dllPath, arguments, out string injectError, out int pid);
@@ -179,7 +182,7 @@ namespace FufuLauncher.Services
                         else
                         {
                             errorDetail = $"注入失败: {injectError} (错误码: {injectResult})";
-                            logBuilder.AppendLine($"[启动流程] ❌ {errorDetail}");
+                            logBuilder.AppendLine($"[启动流程] ? {errorDetail}");
                         }
                     }
                     else
@@ -197,7 +200,8 @@ namespace FufuLauncher.Services
                 {
                     logBuilder.AppendLine("[启动流程] 游戏进程已启动");
                     await LaunchAdditionalProgramAsync();
-                    
+                    await LaunchBetterGIAsync();
+
                     result.Success = true;
                     result.ErrorMessage = "";
                 }
@@ -205,7 +209,7 @@ namespace FufuLauncher.Services
                 {
                     result.ErrorMessage = $"游戏启动失败\n\n{errorDetail}";
                 }
-                
+
                 result.DetailLog = logBuilder.ToString();
                 Debug.WriteLine(result.DetailLog);
                 return result;
@@ -213,12 +217,12 @@ namespace FufuLauncher.Services
             catch (Exception ex)
             {
                 result.ErrorMessage = $"启动过程中发生严重异常: {ex.Message}";
-                result.DetailLog = $"[启动流程] 💥 未处理异常: {ex}\n{ex.StackTrace}";
+                result.DetailLog = $"[启动流程] ?? 未处理异常: {ex}\n{ex.StackTrace}";
                 Debug.WriteLine(result.DetailLog);
                 return result;
             }
         }
-    
+
         private bool StartGameNormally(string exePath, string args, string workingDir, System.Text.StringBuilder log)
         {
             try
@@ -226,7 +230,7 @@ namespace FufuLauncher.Services
                 log.AppendLine($"[普通启动] 程序: {exePath}");
                 log.AppendLine($"[普通启动] 参数: {args}");
                 log.AppendLine($"[普通启动] 工作目录: {workingDir}");
-                
+
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = exePath,
@@ -234,13 +238,13 @@ namespace FufuLauncher.Services
                     WorkingDirectory = workingDir,
                     UseShellExecute = true
                 });
-                
+
                 log.AppendLine("[普通启动] 进程已创建");
                 return true;
             }
             catch (Exception ex)
             {
-                log.AppendLine($"[普通启动] ❌ 异常: {ex.Message}");
+                log.AppendLine($"[普通启动] ? 异常: {ex.Message}");
                 return false;
             }
         }
@@ -261,7 +265,7 @@ namespace FufuLauncher.Services
                     if (!string.IsNullOrEmpty(programPath) && File.Exists(programPath))
                     {
                         Debug.WriteLine($"[附加程序] 文件存在，准备启动: {programPath}");
-                
+
                         var startInfo = new ProcessStartInfo
                         {
                             FileName = programPath,
@@ -289,6 +293,124 @@ namespace FufuLauncher.Services
             }
         }
 
+        private async Task LaunchBetterGIAsync()
+        {
+            try
+            {
+                var enabled = await _localSettingsService.ReadSettingAsync("IsBetterGIIntegrationEnabled");
+                if (enabled != null && Convert.ToBoolean(enabled))
+                {
+                    string processDir = null;
+                    try
+                    {
+                        processDir = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule?.FileName);
+                    }
+                    catch { /* ignore */ }
+
+                    var candidates = new[]
+                    {
+                        Path.Combine(AppContext.BaseDirectory, "BetterGI.exe"),
+                        Path.Combine(AppContext.BaseDirectory, "Assets", "BetterGI.exe"),
+                        Path.Combine(AppContext.BaseDirectory, "BetterGI.lnk"),
+                        Path.Combine(AppContext.BaseDirectory, "Assets", "BetterGI.lnk"),
+                        processDir == null ? null : Path.Combine(processDir, "BetterGI.exe"),
+                        processDir == null ? null : Path.Combine(processDir, "Assets", "BetterGI.exe"),
+                        processDir == null ? null : Path.Combine(processDir, "BetterGI.lnk"),
+                        processDir == null ? null : Path.Combine(processDir, "Assets", "BetterGI.lnk")
+                    };
+
+                    string found = null;
+                    foreach (var c in candidates)
+                    {
+                        if (string.IsNullOrEmpty(c)) continue;
+                        if (File.Exists(c))
+                        {
+                            found = c;
+                            break;
+                        }
+                    }
+
+                    Debug.WriteLine($"[BetterGI] 尝试启动，候选路径: {string.Join(", ", candidates.Where(p => !string.IsNullOrEmpty(p)))}");
+
+                    if (!string.IsNullOrEmpty(found))
+                    {
+                        Debug.WriteLine($"[BetterGI] 找到: {found}");
+
+                        var startInfo = new ProcessStartInfo
+                        {
+                            FileName = found,
+                            UseShellExecute = true,
+                            WorkingDirectory = Path.GetDirectoryName(found)
+                        };
+
+                        // 如果是.lnk，直接启动即可（Shell 会解析快捷方式）；如果是 exe，也直接启动
+                        Process.Start(startInfo);
+                        Debug.WriteLine("[BetterGI] 启动成功");
+                    }
+                    else
+                    {
+                        Debug.WriteLine("[BetterGI] 未找到可用的 BetterGI 可执行或快捷方式");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[BetterGI] 启动失败: {ex.Message}");
+            }
+        }
+
+        public async Task StopBetterGIAsync()
+        {
+            try
+            {
+                var enabled = await _localSettingsService.ReadSettingAsync("IsBetterGIIntegrationEnabled");
+                var closeOnExit = await _localSettingsService.ReadSettingAsync("IsBetterGICloseOnExitEnabled");
+                if (enabled == null || !Convert.ToBoolean(enabled) || closeOnExit == null || !Convert.ToBoolean(closeOnExit)) return;
+
+                // 尝试根据已知进程名关闭 BetterGI.exe
+                var processes = Process.GetProcessesByName("BetterGI");
+                if (processes.Length > 0)
+                {
+                    foreach (var p in processes)
+                    {
+                        try
+                        {
+                            p.Kill();
+                            await p.WaitForExitAsync();
+                            Debug.WriteLine("[BetterGI] 进程已终止");
+                        }
+                        catch (Exception ex)
+                        {
+                            Debug.WriteLine($"[BetterGI] 终止进程失败: {ex.Message}");
+                        }
+                    }
+                    return;
+                }
+
+                // 如果未找到进程，则尝试使用 taskkill 关闭
+                try
+                {
+                    var startInfo = new ProcessStartInfo
+                    {
+                        FileName = "taskkill",
+                        Arguments = "/IM BetterGI.exe /F",
+                        UseShellExecute = true,
+                        CreateNoWindow = true
+                    };
+                    Process.Start(startInfo);
+                    Debug.WriteLine("[BetterGI] 发送 taskkill 指令");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[BetterGI] 使用 taskkill 终止失败: {ex.Message}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[BetterGI] Stop 异常: {ex.Message}");
+            }
+        }
+
         private string BuildLaunchArguments(GameConfig config)
         {
             var args = new System.Text.StringBuilder();
@@ -306,11 +428,11 @@ namespace FufuLauncher.Services
             if (customParamsObj != null)
             {
                 string customParams = customParamsObj.ToString();
-        
+
                 if (!string.IsNullOrWhiteSpace(customParams))
                 {
                     customParams = customParams.Trim('"').Trim();
-            
+
                     if (!string.IsNullOrEmpty(customParams))
                     {
                         if (args.Length > 0) args.Append(' ');

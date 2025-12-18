@@ -443,7 +443,7 @@ namespace FufuLauncher.ViewModels
 
             if (IsGameRunning)
             {
-                LaunchButtonText = "点击终止游戏";
+                LaunchButtonText = "点击退出游戏";
                 LaunchButtonIcon = "\uE711";
             }
             else
@@ -656,6 +656,16 @@ namespace FufuLauncher.ViewModels
                         await process.WaitForExitAsync();
                     }
                     catch { }
+                }
+
+                // 尝试关闭 BetterGI
+                try
+                {
+                    await _gameLauncherService.StopBetterGIAsync();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"关闭 BetterGI 时发生错误: {ex.Message}");
                 }
 
                 await Task.Delay(1000);
