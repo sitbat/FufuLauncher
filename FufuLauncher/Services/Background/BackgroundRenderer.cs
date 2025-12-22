@@ -49,11 +49,24 @@ namespace FufuLauncher.Services.Background
 
         public BackgroundRenderer()
         {
-            _cacheFolderPath = Path.Combine(
-                ApplicationData.Current.LocalCacheFolder.Path,
-                "BackgroundCache"
-            );
-            Directory.CreateDirectory(_cacheFolderPath);
+            // ❌ 移除这段导致崩溃的代码:
+            // _cacheFolderPath = Path.Combine(ApplicationData.Current.LocalCacheFolder.Path, "BackgroundCache");
+
+            // ✅ 替换为标准路径 (例如: C:\Users\xxx\AppData\Local\FufuLauncher\BackgroundCache)
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            _cacheFolderPath = Path.Combine(localAppData, "FufuLauncher", "BackgroundCache");
+
+            try
+            {
+                if (!Directory.Exists(_cacheFolderPath))
+                {
+                    Directory.CreateDirectory(_cacheFolderPath);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"BackgroundRenderer: 创建缓存目录失败 - {ex.Message}");
+            }
         }
 
         public async Task<BackgroundRenderResult> GetBackgroundAsync(ServerType server, bool preferVideo)

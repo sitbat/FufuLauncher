@@ -12,11 +12,18 @@ using FufuLauncher.Services;
 using FufuLauncher.Services.Background;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Windows.ApplicationModel;
 using Windows.Storage;
+using CommunityToolkit.Mvvm.Messaging.Messages;
 
 namespace FufuLauncher.ViewModels
 {
+    
+    public enum WindowBackdropType
+    {
+        None = 0,
+        Acrylic = 1,
+        Mica = 2
+    }
     public enum AppLanguage
     {
         Default = 0,
@@ -66,7 +73,7 @@ namespace FufuLauncher.ViewModels
             get;
         }
 
-        [ObservableProperty] private bool _isAcrylicEnabled = true;
+        [ObservableProperty] private WindowBackdropType _currentWindowBackdrop;
         public ICommand SwitchThemeCommand
         {
             get;
@@ -165,33 +172,43 @@ namespace FufuLauncher.ViewModels
             ClearCustomBackgroundCommand = new AsyncRelayCommand(ClearCustomBackground);
             OpenBackgroundCacheFolderCommand = new AsyncRelayCommand(OpenBackgroundCacheFolderAsync);
         }
-        private async Task LoadBackgroundCachePathAsync()
+        private Task LoadBackgroundCachePathAsync()
         {
             try
             {
-                var localCacheFolder = ApplicationData.Current.LocalCacheFolder;
-                var backgroundCacheFolder = await localCacheFolder.CreateFolderAsync("BackgroundCache", CreationCollisionOption.OpenIfExists);
-                BackgroundCacheFolderPath = backgroundCacheFolder.Path;
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var cachePath = Path.Combine(localAppData, "FufuLauncher", "BackgroundCache");
+                
+                if (!Directory.Exists(cachePath))
+                {
+                    Directory.CreateDirectory(cachePath);
+                }
+                
+                BackgroundCacheFolderPath = cachePath;
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"加载缓存路径失败: {ex.Message}");
                 BackgroundCacheFolderPath = "无法获取路径";
             }
+            return Task.CompletedTask;
         }
 
         private async Task OpenBackgroundCacheFolderAsync()
         {
             try
             {
-                var localCacheFolder = ApplicationData.Current.LocalCacheFolder;
-                var backgroundCacheFolder = await localCacheFolder.CreateFolderAsync("BackgroundCache", CreationCollisionOption.OpenIfExists);
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var cachePath = Path.Combine(localAppData, "FufuLauncher", "BackgroundCache");
 
-                await backgroundCacheFolder.GetFilesAsync();
+                if (!Directory.Exists(cachePath))
+                {
+                    Directory.CreateDirectory(cachePath);
+                }
 
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = backgroundCacheFolder.Path,
+                    FileName = cachePath,
                     UseShellExecute = true,
                     Verb = "open"
                 });
@@ -219,10 +236,10 @@ namespace FufuLauncher.ViewModels
             await LoadCustomBackgroundSettingsAsync();
             await LoadBackgroundCachePathAsync();
             UpdateLaunchArgsPreview();
+            
             OnPropertyChanged(nameof(IsStartupSoundEnabled));
             OnPropertyChanged(nameof(StartupSoundPath));
             OnPropertyChanged(nameof(HasCustomStartupSound));
-
             OnPropertyChanged(nameof(ElementTheme));
             OnPropertyChanged(nameof(SelectedServer));
             OnPropertyChanged(nameof(IsBackgroundEnabled));
@@ -234,7 +251,7 @@ namespace FufuLauncher.ViewModels
             OnPropertyChanged(nameof(LaunchArgsHeight));
             OnPropertyChanged(nameof(CustomBackgroundPath));
             OnPropertyChanged(nameof(HasCustomBackground));
-            OnPropertyChanged(nameof(IsAcrylicEnabled));
+            OnPropertyChanged(nameof(CurrentWindowBackdrop));
             OnPropertyChanged(nameof(IsShortTermSupportEnabled));
             OnPropertyChanged(nameof(IsBetterGIIntegrationEnabled));
             OnPropertyChanged(nameof(IsBetterGICloseOnExitEnabled));
@@ -265,8 +282,15 @@ namespace FufuLauncher.ViewModels
                 ParseLaunchParameters(CustomLaunchParameters);
             }
 
-            var acrylicJson = await _localSettingsService.ReadSettingAsync("IsAcrylicEnabled");
-            IsAcrylicEnabled = acrylicJson == null ? true : Convert.ToBoolean(acrylicJson);
+            var backdropJson = await _localSettingsService.ReadSettingAsync("WindowBackdrop");
+            if (backdropJson != null)
+            {
+                CurrentWindowBackdrop = (WindowBackdropType)Convert.ToInt32(backdropJson);
+            }
+            else
+            {
+                CurrentWindowBackdrop = WindowBackdropType.None;
+            }
 
             var shortTermJson = await _localSettingsService.ReadSettingAsync("IsShortTermSupportEnabled");
             IsShortTermSupportEnabled = shortTermJson != null && Convert.ToBoolean(shortTermJson);
@@ -290,6 +314,18 @@ namespace FufuLauncher.ViewModels
             {
                 StartupSoundPath = null;
                 HasCustomStartupSound = false;
+            }
+        }
+        
+        partial void OnCurrentWindowBackdropChanged(WindowBackdropType value)
+        {
+            Debug.WriteLine($"[ViewModel] 属性已更新为: {value}");
+
+            if (!_isInitializing)
+            {
+                _localSettingsService.SaveSettingAsync("WindowBackdrop", (int)value);
+                
+                WeakReferenceMessenger.Default.Send(new ValueChangedMessage<WindowBackdropType>(value));
             }
         }
         private async Task SelectStartupSoundAsync()
@@ -496,14 +532,7 @@ namespace FufuLauncher.ViewModels
                 _ = RefreshMainPageBackground();
             }
         }
-
-        partial void OnIsAcrylicEnabledChanged(bool value)
-        {
-            Debug.WriteLine($"SettingsViewModel: 保存亚克力设置 {value}");
-            _ = _localSettingsService.SaveSettingAsync("IsAcrylicEnabled", value);
-
-            WeakReferenceMessenger.Default.Send(new AcrylicSettingChangedMessage(value));
-        }
+        
         partial void OnIsShortTermSupportEnabledChanged(bool value)
         {
             Debug.WriteLine($"SettingsViewModel: 短期支持版本设置变更为 {value}");
@@ -653,17 +682,8 @@ namespace FufuLauncher.ViewModels
 
         private static string GetVersionDescription()
         {
-            Version version;
-
-            if (RuntimeHelper.IsMSIX)
-            {
-                var packageVersion = Package.Current.Id.Version;
-                version = new Version(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-            }
-            else
-            {
-                version = Assembly.GetExecutingAssembly().GetName().Version!;
-            }
+            var version = Assembly.GetEntryAssembly().GetName().Version;
+            if (version == null) version = new Version(1, 0, 0, 0);
 
             return $"FufuLauncher - {version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
         }

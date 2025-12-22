@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿﻿using System.Diagnostics;
 using System.Security.Principal;
 using CommunityToolkit.Mvvm.Messaging;
 using FufuLauncher.Contracts.Services;
@@ -11,6 +11,8 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Windows.UI.ViewManagement;
+using CommunityToolkit.Mvvm.Messaging.Messages;
+using FufuLauncher.ViewModels;
 
 namespace FufuLauncher;
 
@@ -23,10 +25,15 @@ public sealed partial class MainWindow : WindowEx
     {
         InitializeComponent();
 
+        // 设置窗口图标 (使用文件系统路径)
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico"));
 
-        var localizedTitle = "AppDisplayName".GetLocalized();
-        Title = string.IsNullOrWhiteSpace(localizedTitle) ? "芙芙启动器" : localizedTitle;
+        // ❌ [已移除] 移除导致崩溃的资源加载代码
+        // var localizedTitle = "AppDisplayName".GetLocalized();
+        // Title = string.IsNullOrWhiteSpace(localizedTitle) ? "芙芙启动器" : localizedTitle;
+
+        // ✅ [已修改] 直接硬编码标题，避免非打包应用找不到 resources.pri 的问题
+        Title = "芙芙启动器";
 
         ExtendsContentIntoTitleBar = true;
 
@@ -45,12 +52,14 @@ public sealed partial class MainWindow : WindowEx
             });
         });
 
-        WeakReferenceMessenger.Default.Register<AcrylicSettingChangedMessage>(this, (r, m) =>
+
+        Debug.WriteLine("[MainWindow] 开始注册消息监听...");
+        WeakReferenceMessenger.Default.Register<ValueChangedMessage<WindowBackdropType>>(this, (r, m) =>
         {
+            Debug.WriteLine($"[MainWindow] 收到消息! 准备切换背景为: {m.Value}");
             dispatcherQueue.TryEnqueue(() =>
             {
-                try { ApplyAcrylicSetting(m.IsEnabled); }
-                catch (Exception ex) { Debug.WriteLine($"亚克力设置应用异常: {ex.Message}"); }
+                ApplyBackdrop(m.Value);
             });
         });
 
@@ -65,16 +74,71 @@ public sealed partial class MainWindow : WindowEx
 
         this.Activated += OnWindowActivated;
     }
+    
+    private async Task LoadAndApplyAcrylicSettingAsync()
+    {
+        try
+        {
+            var localSettingsService = App.GetService<ILocalSettingsService>();
+        
+            // 读取新的背景设置
+            var backdropJson = await localSettingsService.ReadSettingAsync("WindowBackdrop");
+            WindowBackdropType backdropType;
 
+            if (backdropJson != null)
+            {
+                backdropType = (WindowBackdropType)Convert.ToInt32(backdropJson);
+            }
+            else
+            {
+                // 回退兼容旧设置
+                var acrylicEnabled = await localSettingsService.ReadSettingAsync("IsAcrylicEnabled");
+                bool isEnabled = acrylicEnabled == null ? true : Convert.ToBoolean(acrylicEnabled);
+                backdropType = isEnabled ? WindowBackdropType.Acrylic : WindowBackdropType.None;
+            }
 
+            ApplyBackdrop(backdropType);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"加载背景设置失败: {ex.Message}");
+            ApplyBackdrop(WindowBackdropType.Acrylic); // 出错默认用亚克力
+        }
+    }
+    private void ApplyBackdrop(WindowBackdropType type)
+    {
+        Debug.WriteLine($"[MainWindow] 执行 ApplyBackdrop: {type}");
+        try
+        {
+            this.SystemBackdrop = null; // 清除旧背景
+            Debug.WriteLine("[MainWindow] 旧背景已清除");
 
-
+            switch (type)
+            {
+                case WindowBackdropType.Mica:
+                    Debug.WriteLine("[MainWindow] 创建 MicaBackdrop...");
+                    this.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
+                    break;
+                case WindowBackdropType.Acrylic:
+                    Debug.WriteLine("[MainWindow] 创建 DesktopAcrylicBackdrop...");
+                    this.SystemBackdrop = new Microsoft.UI.Xaml.Media.DesktopAcrylicBackdrop();
+                    break;
+                default:
+                    Debug.WriteLine("[MainWindow] 设置为纯色 (SystemBackdrop = null)");
+                    break;
+            }
+            Debug.WriteLine("[MainWindow] 背景设置完成");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindow] !!! 设置背景报错: {ex}");
+        }
+    }
 
     private void SetInitialWindowSize()
     {
         try
         {
-
             var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
                 this.AppWindow.Id,
                 Microsoft.UI.Windowing.DisplayAreaFallback.Primary
@@ -87,20 +151,17 @@ public sealed partial class MainWindow : WindowEx
 
                 if (screenWidth >= 2560 && screenHeight >= 1440)
                 {
-
                     this.Width = 1750;
                     this.Height = 1000;
                 }
                 else
                 {
-
                     this.Width = 1360;
                     this.Height = 768;
                 }
             }
             else
             {
-
                 this.Width = 1360;
                 this.Height = 768;
             }
@@ -108,7 +169,6 @@ public sealed partial class MainWindow : WindowEx
         catch (Exception ex)
         {
             Debug.WriteLine($"设置初始窗口大小失败: {ex.Message}");
-
             this.Width = 1360;
             this.Height = 768;
         }
@@ -120,8 +180,12 @@ public sealed partial class MainWindow : WindowEx
         {
             this.SetTitleBar(AppTitleBar);
 
-            TitleBarIcon.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(
-                new Uri("ms-appx:///Assets/WindowIcon.ico"));
+            // 再次确保标题栏图标也能正常加载
+            var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico");
+            if (File.Exists(iconPath))
+            {
+                TitleBarIcon.Source = new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(new Uri(iconPath));
+            }
 
             UpdateTitleBarWithAdminStatus();
         }
@@ -138,6 +202,7 @@ public sealed partial class MainWindow : WindowEx
         try
         {
             bool isAdmin = IsRunningAsAdministrator();
+            // 使用硬编码的标题基础
             var baseTitle = "芙芙启动器";
             TitleBarText.Text = isAdmin ? $"{baseTitle} [管理员]" : baseTitle;
         }
@@ -176,23 +241,7 @@ public sealed partial class MainWindow : WindowEx
             ShowMainContent();
         }
     }
-
-    private async Task LoadAndApplyAcrylicSettingAsync()
-    {
-        try
-        {
-            var localSettingsService = App.GetService<ILocalSettingsService>();
-            var acrylicEnabled = await localSettingsService.ReadSettingAsync("IsAcrylicEnabled");
-            bool isEnabled = acrylicEnabled == null ? true : Convert.ToBoolean(acrylicEnabled);
-
-            ApplyAcrylicSetting(isEnabled);
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"加载亚克力设置失败: {ex.Message}");
-            ApplyAcrylicSetting(true);
-        }
-    }
+    
 
     private void ApplyAcrylicSetting(bool isEnabled)
     {

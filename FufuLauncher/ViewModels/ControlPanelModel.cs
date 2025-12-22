@@ -57,8 +57,7 @@ public partial class ControlPanelModel : ObservableObject
 
         _ = StartGameMonitoringLoopAsync(_cancellationTokenSource.Token);
     }
-
-    // ========== UDP功能（保持原始逻辑） ==========
+    
     [ObservableProperty]
     private bool _enableFpsOverride;
 
@@ -94,8 +93,7 @@ public partial class ControlPanelModel : ObservableObject
         SendCommand($"set_fov {value}");
         SaveConfig();
     }
-
-    // **关键点：雾效属性名保持EnableFogOverride，XAML绑定这个**
+    
     [ObservableProperty]
     private bool _enableFogOverride;
 
@@ -113,10 +111,9 @@ public partial class ControlPanelModel : ObservableObject
         SendCommand(value ? "enable_Perspective_override" : "disable_Perspective_override");
         SaveConfig();
     }
-
-    // ========== DLL功能（UI显示"禁用/移除"，True=执行操作） ==========
+    
     [ObservableProperty]
-    private bool _removeQuestBanner = true;  // 移除任务横幅
+    private bool _removeQuestBanner = true;
 
     partial void OnRemoveQuestBannerChanged(bool value)
     {
@@ -124,7 +121,7 @@ public partial class ControlPanelModel : ObservableObject
     }
 
     [ObservableProperty]
-    private bool _removeDamageText = true;  // 移除伤害文本
+    private bool _removeDamageText = true;
 
     partial void OnRemoveDamageTextChanged(bool value)
     {
@@ -132,7 +129,7 @@ public partial class ControlPanelModel : ObservableObject
     }
 
     [ObservableProperty]
-    private bool _enableTouchScreenMode;  // 触屏模式
+    private bool _enableTouchScreenMode;
 
     partial void OnEnableTouchScreenModeChanged(bool value)
     {
@@ -140,7 +137,7 @@ public partial class ControlPanelModel : ObservableObject
     }
 
     [ObservableProperty]
-    private bool _disableEventCameraMove = true;  // 禁用事件镜头移动
+    private bool _disableEventCameraMove = true;
 
     partial void OnDisableEventCameraMoveChanged(bool value)
     {
@@ -148,7 +145,7 @@ public partial class ControlPanelModel : ObservableObject
     }
 
     [ObservableProperty]
-    private bool _removeTeamProgressLimit = true;  // 移除组队进度限制
+    private bool _removeTeamProgressLimit = true;
 
     partial void OnRemoveTeamProgressLimitChanged(bool value)
     {
@@ -156,14 +153,13 @@ public partial class ControlPanelModel : ObservableObject
     }
 
     [ObservableProperty]
-    private bool _enableRedirectCombineEntry;  // 重定向合成入口
+    private bool _enableRedirectCombineEntry;
 
     partial void OnEnableRedirectCombineEntryChanged(bool value)
     {
         SaveConfig();
     }
-
-    // 树脂控制
+    
     [ObservableProperty]
     private bool _resinListItemId000106Allowed;
 
@@ -440,7 +436,7 @@ public partial class ControlPanelModel : ObservableObject
                     TargetFps = config.TargetFps;
                     EnableFovOverride = config.EnableFovOverride;
                     TargetFov = config.TargetFov;
-                    EnableFogOverride = config.EnableFogOverride;  // 雾效属性
+                    EnableFogOverride = config.EnableFogOverride;
                     EnablePerspectiveOverride = config.EnablePerspectiveOverride;
                     RemoveQuestBanner = config.RemoveQuestBanner;
                     RemoveDamageText = config.RemoveDamageText;
@@ -494,7 +490,7 @@ public partial class ControlPanelModel : ObservableObject
                 TargetFps = TargetFps,
                 EnableFovOverride = EnableFovOverride,
                 TargetFov = TargetFov,
-                EnableFogOverride = EnableFogOverride,  // 雾效属性
+                EnableFogOverride = EnableFogOverride,
                 EnablePerspectiveOverride = EnablePerspectiveOverride,
                 RemoveQuestBanner = RemoveQuestBanner,
                 RemoveDamageText = RemoveDamageText,
@@ -546,7 +542,7 @@ public class ControlPanelConfig
     public bool EnableFogOverride
     {
         get; set;
-    }  // 雾效属性
+    }
     public bool EnablePerspectiveOverride
     {
         get; set;

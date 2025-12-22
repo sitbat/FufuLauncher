@@ -332,25 +332,31 @@ public partial class App : Application
     }
     private async Task VerifyResourceFilesAsync()
     {
-        try
+        try 
         {
+            // 1. 创建 Windows App SDK 的 ResourceManager 实例
+            var resourceManager = new Microsoft.Windows.ApplicationModel.Resources.ResourceManager();
 
-            var loader = Windows.ApplicationModel.Resources.ResourceLoader.GetForViewIndependentUse();
-            var test = loader.GetString("AppDisplayName");
-            Debug.WriteLine($"资源加载测试: {test}");
+            // 2. 获取主资源映射 (MainResourceMap)
+            var resourceMap = resourceManager.MainResourceMap;
 
-            if (string.IsNullOrEmpty(test))
+            // 3. 获取特定的资源子树 (通常是 "Resources/" 或直接在根目录下)
+            // 如果你的资源在 Resources.resw 中，通常直接用 GetValue 获取
+            var resourceCandidate = resourceMap.GetValue("AppDisplayName");
+    
+            if (resourceCandidate != null)
             {
-                Debug.WriteLine("⚠️ 警告：资源文件未找到或为空！");
+                var test = resourceCandidate.ValueAsString;
+                Debug.WriteLine($"资源加载成功: {test}");
             }
             else
             {
-                Debug.WriteLine("✅ 资源文件加载成功");
+                Debug.WriteLine("警告: 找不到资源 AppDisplayName");
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"资源验证失败: {ex.Message}");
+            Debug.WriteLine($"资源加载严重失败: {ex.Message}");
         }
     }
     private async Task ApplyLanguageSettingAsync()
