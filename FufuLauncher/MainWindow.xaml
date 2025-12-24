@@ -11,7 +11,19 @@
     mc:Ignorable="d">
     
     <Grid>
-        <Frame x:Name="AgreementFrame" Visibility="Collapsed"/>
+        <Grid x:Name="GlobalBackgroundHost" IsHitTestVisible="False">
+            <Image x:Name="GlobalBackgroundImage"
+                   Stretch="UniformToFill"
+                   Opacity="1"/>
+            <MediaPlayerElement x:Name="GlobalBackgroundVideo"
+                                Stretch="UniformToFill"
+                                Opacity="1"
+                                AutoPlay="True"
+                                AreTransportControlsEnabled="False"
+                                Visibility="Collapsed"/>
+        </Grid>
+
+        <Frame x:Name="AgreementFrame" Visibility="Collapsed" Background="Transparent"/>
         
         <NavigationView x:Name="NavigationView"
                         PaneDisplayMode="Left"
@@ -21,7 +33,8 @@
                         SelectionChanged="NavigationView_SelectionChanged"
                         Loaded="NavigationView_Loaded"
                         OpenPaneLength="150"
-                        CompactPaneLength="60">
+                        CompactPaneLength="60"
+                        Background="Transparent">
             
             <NavigationView.Resources>
                 <Style TargetType="NavigationViewItem">
@@ -83,7 +96,7 @@
                 </NavigationViewItem>
             </NavigationView.FooterMenuItems>
 
-            <Frame x:Name="ContentFrame" />
+            <Frame x:Name="ContentFrame" Background="Transparent" />
         </NavigationView>
         
         <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">

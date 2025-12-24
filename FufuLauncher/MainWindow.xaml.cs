@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Security.Principal;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.Messaging;
 using FufuLauncher.Contracts.Services;
 using FufuLauncher.Helpers;
@@ -13,6 +14,10 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Windows.UI.ViewManagement;
 using CommunityToolkit.Mvvm.Messaging.Messages;
 using FufuLauncher.ViewModels;
+using FufuLauncher.Services.Background;
+using Windows.Media.Playback;
+using FufuLauncher.Services;
+using FufuLauncher.Models;
 
 namespace FufuLauncher;
 
@@ -20,6 +25,27 @@ public sealed partial class MainWindow : WindowEx
 {
     private Microsoft.UI.Dispatching.DispatcherQueue dispatcherQueue;
     private UISettings settings;
+    private readonly IBackgroundRenderer _backgroundRenderer;
+    private readonly ILocalSettingsService _localSettingsService;
+    private MediaPlayer? _globalBackgroundPlayer;
+
+    private Task RunOnUIThreadAsync(Action action)
+    {
+        var tcs = new TaskCompletionSource();
+        dispatcherQueue.TryEnqueue(() =>
+        {
+            try
+            {
+                action();
+                tcs.SetResult();
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+        return tcs.Task;
+    }
 
     public MainWindow()
     {
@@ -34,6 +60,8 @@ public sealed partial class MainWindow : WindowEx
         dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         settings = new UISettings();
         settings.ColorValuesChanged += Settings_ColorValuesChanged;
+        _backgroundRenderer = App.GetService<IBackgroundRenderer>();
+        _localSettingsService = App.GetService<ILocalSettingsService>();
 
         SetInitialWindowSize();
 
@@ -64,6 +92,11 @@ public sealed partial class MainWindow : WindowEx
                 try { ShowNotification(m); }
                 catch (Exception ex) { Debug.WriteLine($"显示通知异常: {ex.Message}"); }
             });
+        });
+
+        WeakReferenceMessenger.Default.Register<BackgroundRefreshMessage>(this, (r, m) =>
+        {
+            dispatcherQueue.TryEnqueue(async () => { await LoadGlobalBackgroundAsync(); });
         });
 
         this.Activated += OnWindowActivated;
@@ -101,6 +134,14 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
+            var globalBgSetting = await _localSettingsService.ReadSettingAsync("UseGlobalBackground");
+            bool useGlobalBg = globalBgSetting == null ? true : Convert.ToBoolean(globalBgSetting);
+            if (!useGlobalBg)
+            {
+                await ClearGlobalBackgroundAsync();
+                return;
+            }
+
             var customPathObj = await _localSettingsService.ReadSettingAsync("CustomBackgroundPath");
             var customPath = customPathObj?.ToString();
             var hasCustom = !string.IsNullOrEmpty(customPath) && File.Exists(customPath);
@@ -321,6 +362,7 @@ public sealed partial class MainWindow : WindowEx
         try
         {
             await LoadAndApplyAcrylicSettingAsync();
+            await LoadGlobalBackgroundAsync();
             await CheckUserAgreementAsync();
         }
         catch (Exception ex)
