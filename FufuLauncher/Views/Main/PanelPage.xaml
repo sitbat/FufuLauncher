@@ -67,7 +67,7 @@
                                                    FontSize="24" 
                                                    FontWeight="Bold" 
                                                    Margin="40,0,0,10"/>
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,40,10">
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,500,10">
                                             <TextBlock Text="注入" VerticalAlignment="Center" FontSize="14"/>
                                             <ToggleSwitch IsOn="{x:Bind MainViewModel.UseInjection, Mode=TwoWay}" />
                                         </StackPanel>

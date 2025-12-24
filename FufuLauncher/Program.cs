@@ -3,6 +3,7 @@ using System.Linq;
 using FufuLauncher.Services;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
 
 namespace FufuLauncher
 {
@@ -14,6 +15,17 @@ namespace FufuLauncher
             if (args.Length > 0 && string.Equals(args[0], "--elevated-inject", StringComparison.OrdinalIgnoreCase))
             {
                 RunElevatedInjection(args);
+                return;
+            }
+
+            var key = "FufuLauncher_Main_Instance_Key";
+            var mainInstance = AppInstance.FindOrRegisterForKey(key);
+
+            if (!mainInstance.IsCurrent)
+            {
+                var activationArgs = AppInstance.GetCurrent().GetActivatedEventArgs();
+                var task = mainInstance.RedirectActivationToAsync(activationArgs).AsTask();
+                task.Wait();
                 return;
             }
 

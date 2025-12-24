@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Security.Principal;
 using CommunityToolkit.Mvvm.Messaging;
 using FufuLauncher.Contracts.Services;
@@ -17,6 +18,7 @@ using FufuLauncher.Services.Background;
 using Windows.Media.Playback;
 using FufuLauncher.Services;
 using FufuLauncher.Models;
+using CommunityToolkit.Mvvm.Input;
 
 namespace FufuLauncher;
 
@@ -27,6 +29,12 @@ public sealed partial class MainWindow : WindowEx
     private readonly IBackgroundRenderer _backgroundRenderer;
     private readonly ILocalSettingsService _localSettingsService;
     private MediaPlayer? _globalBackgroundPlayer;
+    private double _frameBackgroundOpacity = 0.5;
+    private bool _minimizeToTray;
+    private bool _isExit;
+
+    public IRelayCommand ShowWindowCommand { get; }
+    public IRelayCommand ExitApplicationCommand { get; }
 
     private Task RunOnUIThreadAsync(Action action)
     {
@@ -50,19 +58,22 @@ public sealed partial class MainWindow : WindowEx
     {
         InitializeComponent();
         
+        ShowWindowCommand = new RelayCommand(ShowWindow);
+        ExitApplicationCommand = new RelayCommand(ExitApplication);
+
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico"));
         
         Title = "芙芙启动器";
 
         ExtendsContentIntoTitleBar = true;
+        
+        this.AppWindow.Closing += AppWindow_Closing;
 
         dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         settings = new UISettings();
         settings.ColorValuesChanged += Settings_ColorValuesChanged;
         _backgroundRenderer = App.GetService<IBackgroundRenderer>();
         _localSettingsService = App.GetService<ILocalSettingsService>();
-
-        SetInitialWindowSize();
 
         WeakReferenceMessenger.Default.Register<AgreementAcceptedMessage>(this, (r, m) =>
         {
@@ -104,9 +115,76 @@ public sealed partial class MainWindow : WindowEx
             dispatcherQueue.TryEnqueue(async () => { await LoadGlobalBackgroundAsync(); });
         });
 
+        WeakReferenceMessenger.Default.Register<BackgroundOverlayOpacityChangedMessage>(this, (r, m) =>
+        {
+            dispatcherQueue.TryEnqueue(() => ApplyOverlayOpacity(m.Value));
+        });
+ 
+         WeakReferenceMessenger.Default.Register<FrameBackgroundOpacityChangedMessage>(this, (r, m) =>
+         {
+             dispatcherQueue.TryEnqueue(() => ApplyFrameBackgroundOpacity(m.Value));
+         });
+
+        WeakReferenceMessenger.Default.Register<MinimizeToTrayChangedMessage>(this, (r, m) =>
+        {
+            _minimizeToTray = m.Value;
+        });
+
         this.Activated += OnWindowActivated;
     }
     
+    private void ShowWindow()
+    {
+        this.Show();
+        this.BringToFront();
+    }
+
+    private async void ExitApplication()
+    {
+        await SaveWindowSizeAsync();
+        _isExit = true;
+        TrayIcon.Dispose();
+        this.Close();
+    }
+
+    private async void AppWindow_Closing(Microsoft.UI.Windowing.AppWindow sender, Microsoft.UI.Windowing.AppWindowClosingEventArgs args)
+    {
+        if (_isExit) return;
+
+        args.Cancel = true;
+
+        if (_minimizeToTray)
+        {
+            this.Hide();
+        }
+        else
+        {
+            await SaveWindowSizeAsync();
+            _isExit = true;
+            this.Close();
+        }
+    }
+
+    private async Task SaveWindowSizeAsync()
+    {
+        try
+        {
+            var localSettings = App.GetService<ILocalSettingsService>();
+            var saveEnabledObj = await localSettings.ReadSettingAsync("IsSaveWindowSizeEnabled");
+            if (saveEnabledObj != null && Convert.ToBoolean(saveEnabledObj))
+            {
+                // 保存当前窗口大小
+                await localSettings.SaveSettingAsync("SavedWindowWidth", this.Width);
+                await localSettings.SaveSettingAsync("SavedWindowHeight", this.Height);
+                Debug.WriteLine($"[MainWindow] 窗口大小已保存: {this.Width}x{this.Height}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindow] 保存窗口大小失败: {ex.Message}");
+        }
+    }
+
     private void UpdateBackgroundOverlayTheme()
     {
         // 确保在 UI 线程执行
@@ -134,8 +212,10 @@ public sealed partial class MainWindow : WindowEx
                 // 浅色模式：使用白色滤镜，让背景变亮，确保黑字清晰
                 GlobalBackgroundOverlay.Fill = new SolidColorBrush(Colors.White);
             }
-        }
-    }
+
+            ApplyFrameBackgroundOpacity(_frameBackgroundOpacity);
+         }
+     }
     
     private async Task LoadAndApplyAcrylicSettingAsync()
     {
@@ -300,10 +380,31 @@ public sealed partial class MainWindow : WindowEx
         }
     }
 
-    private void SetInitialWindowSize()
+    public async Task InitializeWindowSizeAsync()
     {
         try
         {
+            // 尝试恢复保存的窗口大小
+            var localSettings = App.GetService<ILocalSettingsService>();
+            var saveEnabledObj = await localSettings.ReadSettingAsync("IsSaveWindowSizeEnabled");
+            
+            if (saveEnabledObj != null && Convert.ToBoolean(saveEnabledObj))
+            {
+                var widthObj = await localSettings.ReadSettingAsync("SavedWindowWidth");
+                var heightObj = await localSettings.ReadSettingAsync("SavedWindowHeight");
+
+                if (widthObj != null && heightObj != null)
+                {
+                    if (double.TryParse(widthObj.ToString(), out double w) && double.TryParse(heightObj.ToString(), out double h))
+                    {
+                        this.Width = w;
+                        this.Height = h;
+                        Debug.WriteLine($"[MainWindow] 已恢复窗口大小: {w}x{h}");
+                        return;
+                    }
+                }
+            }
+
             var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
                 this.AppWindow.Id,
                 Microsoft.UI.Windowing.DisplayAreaFallback.Primary
@@ -396,9 +497,12 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            await LoadAndApplyAcrylicSettingAsync();
-            await LoadGlobalBackgroundAsync();
-            await CheckUserAgreementAsync();
+            await LoadFrameBackgroundOpacityAsync();
+             await LoadOverlayOpacityAsync();
+             await LoadAndApplyAcrylicSettingAsync();
+             await LoadGlobalBackgroundAsync();
+             await LoadMinimizeToTraySettingAsync();
+             await CheckUserAgreementAsync();
         }
         catch (Exception ex)
         {
@@ -407,6 +511,19 @@ public sealed partial class MainWindow : WindowEx
         }
     }
 
+    private async Task LoadMinimizeToTraySettingAsync()
+    {
+        try
+        {
+            var value = await _localSettingsService.ReadSettingAsync("MinimizeToTray");
+            _minimizeToTray = value != null && Convert.ToBoolean(value);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"加载托盘设置失败: {ex.Message}");
+            _minimizeToTray = false;
+        }
+    }
 
     private async Task CheckUserAgreementAsync()
     {
@@ -691,5 +808,76 @@ public sealed partial class MainWindow : WindowEx
             NotificationType.Error => "\uE711",
             _ => "\uE946"
         };
+    }
+
+    private async Task LoadOverlayOpacityAsync()
+    {
+        try
+        {
+            var valueObj = await _localSettingsService.ReadSettingAsync("GlobalBackgroundOverlayOpacity");
+            double opacity = 0.3;
+            if (valueObj != null && double.TryParse(valueObj.ToString(), out var parsed))
+            {
+                opacity = parsed;
+            }
+
+            ApplyOverlayOpacity(opacity);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindow] 加载背景遮罩透明度失败: {ex.Message}");
+            ApplyOverlayOpacity(0.3);
+        }
+    }
+
+    private async Task LoadFrameBackgroundOpacityAsync()
+    {
+        try
+        {
+            var valueObj = await _localSettingsService.ReadSettingAsync("ContentFrameBackgroundOpacity");
+            double opacity = 0.5;
+            if (valueObj != null && double.TryParse(valueObj.ToString(), out var parsed))
+            {
+                opacity = parsed;
+            }
+
+            ApplyFrameBackgroundOpacity(opacity);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindow] 加载 Frame 背景透明度失败: {ex.Message}");
+            ApplyFrameBackgroundOpacity(0.5);
+        }
+    }
+
+    private void ApplyOverlayOpacity(double value)
+    {
+        var clamped = Math.Clamp(value, 0.0, 1.0);
+        GlobalBackgroundOverlay.Opacity = clamped;
+    }
+
+    private void ApplyFrameBackgroundOpacity(double value)
+    {
+        _frameBackgroundOpacity = Math.Clamp(value, 0.0, 1.0);
+
+        if (ContentFrame == null || ContentFrame.Background == null || ContentFrame.Background is not SolidColorBrush brush)
+        {
+            brush = new SolidColorBrush();
+            ContentFrame.Background = brush;
+        }
+
+        var theme = ElementTheme.Default;
+        if (Content is FrameworkElement root)
+        {
+            theme = root.ActualTheme;
+            if (theme == ElementTheme.Default)
+            {
+                theme = Application.Current.RequestedTheme == ApplicationTheme.Dark ? ElementTheme.Dark : ElementTheme.Light;
+            }
+        }
+
+        var baseColor = theme == ElementTheme.Dark ? Colors.Black : Colors.White;
+        baseColor.A = (byte)Math.Clamp((int)Math.Round(_frameBackgroundOpacity * 255), 0, 255);
+        brush.Color = baseColor;
     }
 }

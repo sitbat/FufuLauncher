@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.Reflection;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -66,6 +67,9 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty]
         private bool _isBetterGICloseOnExitEnabled;
         [ObservableProperty] private bool _isGlobalBackgroundEnabled = true;
+        [ObservableProperty] private double _globalBackgroundOverlayOpacity = 0.3;
+        [ObservableProperty] private double _contentFrameBackgroundOpacity = 0.5;
+        [ObservableProperty] private bool _isSaveWindowSizeEnabled;
 
         public IAsyncRelayCommand OpenBackgroundCacheFolderCommand
         {
@@ -255,6 +259,9 @@ namespace FufuLauncher.ViewModels
             OnPropertyChanged(nameof(IsBetterGIIntegrationEnabled));
             OnPropertyChanged(nameof(IsBetterGICloseOnExitEnabled));
             OnPropertyChanged(nameof(IsGlobalBackgroundEnabled));
+            OnPropertyChanged(nameof(GlobalBackgroundOverlayOpacity));
+            OnPropertyChanged(nameof(ContentFrameBackgroundOpacity));
+            OnPropertyChanged(nameof(IsSaveWindowSizeEnabled));
 
             _isInitializing = false;
         }
@@ -318,6 +325,29 @@ namespace FufuLauncher.ViewModels
                 StartupSoundPath = null;
                 HasCustomStartupSound = false;
             }
+
+            var overlayOpacityJson = await _localSettingsService.ReadSettingAsync("GlobalBackgroundOverlayOpacity");
+            try
+            {
+                GlobalBackgroundOverlayOpacity = overlayOpacityJson != null ? Convert.ToDouble(overlayOpacityJson) : 0.3;
+            }
+            catch
+            {
+                GlobalBackgroundOverlayOpacity = 0.3;
+            }
+
+            var frameOpacityJson = await _localSettingsService.ReadSettingAsync("ContentFrameBackgroundOpacity");
+            try
+            {
+                ContentFrameBackgroundOpacity = frameOpacityJson != null ? Convert.ToDouble(frameOpacityJson) : 0.5;
+            }
+            catch
+            {
+                ContentFrameBackgroundOpacity = 0.5;
+            }
+
+            var saveWindowSizeJson = await _localSettingsService.ReadSettingAsync("IsSaveWindowSizeEnabled");
+            IsSaveWindowSizeEnabled = saveWindowSizeJson != null && Convert.ToBoolean(saveWindowSizeJson);
         }
         
         partial void OnCurrentWindowBackdropChanged(WindowBackdropType value)
@@ -543,6 +573,7 @@ namespace FufuLauncher.ViewModels
             Debug.WriteLine($"SettingsViewModel: 保存全局背景开关 {value}");
             _ = _localSettingsService.SaveSettingAsync("UseGlobalBackground", value);
             WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+            _ = RefreshMainPageBackground();
         }
         
         partial void OnIsShortTermSupportEnabledChanged(bool value)
@@ -567,8 +598,40 @@ namespace FufuLauncher.ViewModels
             _ = _localSettingsService.SaveSettingAsync("IsBetterGICloseOnExitEnabled", value);
         }
 
-        private async Task SwitchInjectionModuleAsync(bool enableShortTerm)
+        partial void OnGlobalBackgroundOverlayOpacityChanged(double value)
         {
+            var clamped = Math.Clamp(value, 0.0, 1.0);
+            if (Math.Abs(clamped - value) > 0.0001)
+            {
+                GlobalBackgroundOverlayOpacity = clamped;
+                return;
+            }
+ 
+            _ = _localSettingsService.SaveSettingAsync("GlobalBackgroundOverlayOpacity", clamped);
+            WeakReferenceMessenger.Default.Send(new BackgroundOverlayOpacityChangedMessage(clamped));
+        }
+
+        partial void OnContentFrameBackgroundOpacityChanged(double value)
+        {
+            var clamped = Math.Clamp(value, 0.0, 1.0);
+            if (Math.Abs(clamped - value) > 0.0001)
+            {
+                ContentFrameBackgroundOpacity = clamped;
+                return;
+            }
+
+            _ = _localSettingsService.SaveSettingAsync("ContentFrameBackgroundOpacity", clamped);
+            WeakReferenceMessenger.Default.Send(new FrameBackgroundOpacityChangedMessage(clamped));
+        }
+
+        partial void OnIsSaveWindowSizeEnabledChanged(bool value)
+        {
+            Debug.WriteLine($"SettingsViewModel: 保存窗口大小记忆设置 {value}");
+            _ = _localSettingsService.SaveSettingAsync("IsSaveWindowSizeEnabled", value);
+        }
+ 
+         private async Task SwitchInjectionModuleAsync(bool enableShortTerm)
+         {
             try
             {
 
@@ -633,6 +696,7 @@ namespace FufuLauncher.ViewModels
         {
             Debug.WriteLine($"SettingsViewModel: 保存托盘设置 {value}");
             _ = _localSettingsService.SaveSettingAsync("MinimizeToTray", value);
+            WeakReferenceMessenger.Default.Send(new MinimizeToTrayChangedMessage(value));
         }
 
         partial void OnCustomLaunchParametersChanged(string value)

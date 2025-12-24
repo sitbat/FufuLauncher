@@ -5,12 +5,26 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:windowex="using:WinUIEx"
+    xmlns:tb="using:H.NotifyIcon"
     MinWidth="500"
     MinHeight="500"
     PersistenceId="MainWindow"
     mc:Ignorable="d">
 
     <Grid>
+        <tb:TaskbarIcon x:Name="TrayIcon"
+                        IconSource="/Assets/WindowIcon.ico"
+                        ToolTipText="芙芙启动器"
+                        LeftClickCommand="{x:Bind ShowWindowCommand}" 
+                        DoubleClickCommand="{x:Bind ShowWindowCommand}">
+            <tb:TaskbarIcon.ContextFlyout>
+                <MenuFlyout>
+                    <MenuFlyoutItem Text="显示主界面" Command="{x:Bind ShowWindowCommand}" />
+                    <MenuFlyoutItem Text="退出" Command="{x:Bind ExitApplicationCommand}" />
+                </MenuFlyout>
+            </tb:TaskbarIcon.ContextFlyout>
+        </tb:TaskbarIcon>
+
         <Grid x:Name="GlobalBackgroundHost" IsHitTestVisible="False">
             <Image x:Name="GlobalBackgroundImage"
                    Stretch="UniformToFill"

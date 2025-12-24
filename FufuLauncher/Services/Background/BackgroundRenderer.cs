@@ -35,10 +35,16 @@ namespace FufuLauncher.Services.Background
 
     public class BackgroundRenderer : IBackgroundRenderer
     {
-        private static readonly HttpClient _httpClient = new HttpClient
+        private static readonly HttpClient _httpClient;
+
+        static BackgroundRenderer()
         {
-            Timeout = TimeSpan.FromSeconds(30)
-        };
+            _httpClient = new HttpClient
+            {
+                Timeout = TimeSpan.FromSeconds(60)
+            };
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+        }
 
         private readonly string _cacheFolderPath;
         private BackgroundRenderResult _cachedBackground;
@@ -219,11 +225,24 @@ namespace FufuLauncher.Services.Background
 
         private string GetCacheFileName(string url)
         {
+            var extension = ".mp4";
+            try
+            {
+                var uri = new Uri(url);
+                var path = uri.AbsolutePath;
+                var ext = Path.GetExtension(path);
+                if (!string.IsNullOrEmpty(ext))
+                {
+                    extension = ext;
+                }
+            }
+            catch { }
+
             using (var md5 = MD5.Create())
             {
                 var bytes = Encoding.UTF8.GetBytes(url);
                 var hash = md5.ComputeHash(bytes);
-                return BitConverter.ToString(hash).Replace("-", "").ToLower() + ".webm";
+                return BitConverter.ToString(hash).Replace("-", "").ToLower() + extension;
             }
         }
 
@@ -235,7 +254,7 @@ namespace FufuLauncher.Services.Background
             {
                 try
                 {
-                    foreach (var file in Directory.GetFiles(_cacheFolderPath, "*.webm"))
+                    foreach (var file in Directory.GetFiles(_cacheFolderPath))
                     {
                         File.Delete(file);
                     }

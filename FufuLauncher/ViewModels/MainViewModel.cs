@@ -201,6 +201,14 @@ namespace FufuLauncher.ViewModels
             await UpdateUI(() => IsBackgroundLoading = true);
             try
             {
+                var useGlobalBgSetting = await _localSettingsService.ReadSettingAsync("UseGlobalBackground");
+                bool useGlobalBg = useGlobalBgSetting == null ? true : Convert.ToBoolean(useGlobalBgSetting);
+                if (useGlobalBg)
+                {
+                    ClearBackground();
+                    return;
+                }
+
                 if (HasCustomBackground && !string.IsNullOrEmpty(CustomBackgroundPath))
                 {
                     var customResult = await _backgroundRenderer.GetCustomBackgroundAsync(CustomBackgroundPath);

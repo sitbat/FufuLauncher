@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppLifecycle;
 using Windows.Media.Core;
 using Windows.Media.Playback;
 
@@ -50,6 +51,9 @@ public partial class App : Application
         UnhandledException += App_UnhandledException;
 
         InitializeComponent();
+
+        var appInstance = AppInstance.GetCurrent();
+        appInstance.Activated += App_Activated;
 
         Host = Microsoft.Extensions.Hosting.Host.CreateDefaultBuilder()
             .UseContentRoot(AppContext.BaseDirectory)
@@ -123,6 +127,14 @@ public partial class App : Application
         CleanupOldSettings();
     }
 
+    private void App_Activated(object sender, AppActivationArguments e)
+    {
+        _mainDispatcherQueue?.TryEnqueue(() =>
+        {
+            MainWindow.Activate();
+        });
+    }
+
     private void CurrentDomain_UnhandledException(object sender, System.UnhandledExceptionEventArgs e)
     {
         LogException(e.ExceptionObject as Exception, "CurrentDomain_UnhandledException");
@@ -193,6 +205,11 @@ public partial class App : Application
 
             await VerifyResourceFilesAsync();
             await ApplyLanguageSettingAsync();
+
+            if (MainWindow is MainWindow mainWindow)
+            {
+                await mainWindow.InitializeWindowSizeAsync();
+            }
 
             var activationService = GetService<IActivationService>();
             await activationService.ActivateAsync(args);

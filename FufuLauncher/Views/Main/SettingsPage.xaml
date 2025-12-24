@@ -11,6 +11,7 @@
             <helpers:LanguageEnumToBooleanConverter x:Key="LanguageEnumToBooleanConverter"/>
             <helpers:WindowModeEnumToBooleanConverter x:Key="WindowModeEnumToBooleanConverter"/>
             <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <helpers:StringFormatConverter x:Key="StringFormatConverter"/>
             
             <Style x:Key="PresetButtonStyle" TargetType="Button">
                 <Setter Property="Background" Value="{ThemeResource CardBackgroundFillColorDefaultBrush}"/>
@@ -150,8 +151,51 @@
                                 </RadioButton.CommandParameter>
                             </RadioButton>
                         </StackPanel>
-                    </StackPanel>
-                </Border>
+                        
+                        <StackPanel Style="{StaticResource SettingItemStyle}" Margin="0,12,0,0">
+                            <TextBlock Text="背景遮罩透明度" 
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       FontSize="14"/>
+                            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                <Slider x:Name="OverlayOpacitySlider" Width="260" Minimum="0" Maximum="1" StepFrequency="0.05"
+                                        Value="{x:Bind ViewModel.GlobalBackgroundOverlayOpacity, Mode=TwoWay}"/>
+                                <TextBlock Text="{Binding Value, ElementName=OverlayOpacitySlider, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:P0}'}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Style="{StaticResource SettingItemStyle}" Margin="0,12,0,0">
+                            <TextBlock Text="Frame 背景透明度" 
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       FontSize="14"/>
+                            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                <Slider x:Name="FrameOpacitySlider" Width="260" Minimum="0" Maximum="1" StepFrequency="0.05"
+                                        Value="{x:Bind ViewModel.ContentFrameBackgroundOpacity, Mode=TwoWay}"/>
+                                <TextBlock Text="{Binding Value, ElementName=FrameOpacitySlider, Converter={StaticResource StringFormatConverter}, ConverterParameter='{}{0:P0}'}"
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Style="{StaticResource SettingItemStyle}" Margin="0,12,0,0">
+                            <TextBlock Text="关闭后最小化至系统托盘" 
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       FontSize="14"/>
+                            <ToggleSwitch OffContent="已禁用"
+                                          OnContent="已启用"
+                                          IsOn="{x:Bind ViewModel.MinimizeToTray, Mode=TwoWay}"/>
+                                          
+                        </StackPanel>
+
+                        <StackPanel Style="{StaticResource SettingItemStyle}" Margin="0,12,0,0">
+                            <TextBlock Text="记住窗口大小" 
+                                       Style="{ThemeResource BodyStrongTextBlockStyle}"
+                                       FontSize="14"/>
+                            <ToggleSwitch OffContent="已禁用"
+                                          OnContent="已启用"
+                                          IsOn="{x:Bind ViewModel.IsSaveWindowSizeEnabled, Mode=TwoWay}"/>
+                        </StackPanel>
+                     </StackPanel>
+                 </Border>
                 
                 <Border x:Name="LanguageItem" Style="{StaticResource SettingsCardStyle}">
                     <StackPanel>
