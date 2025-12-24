@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.Text;
 using FufuLauncher.Contracts.Services;
 using FufuLauncher.ViewModels;
@@ -161,7 +162,6 @@ namespace FufuLauncher.Services
                 logBuilder.AppendLine($"[启动流程] 注入模式: {(useInjection ? "启用" : "禁用")}");
 
                 bool gameStarted = false;
-                string errorDetail = "";
 
                 if (useInjection)
                 {
@@ -200,17 +200,7 @@ namespace FufuLauncher.Services
 
                     if (File.Exists(dllPath))
                     {
-                        int injectResult = _launcherService.LaunchGameAndInject(gameExePath, dllPath, arguments, out string injectError, out int pid);
-                        if (injectResult == 0)
-                        {
-                            gameStarted = true;
-                            logBuilder.AppendLine($"[启动流程] 注入成功，PID: {pid}");
-                        }
-                        else
-                        {
-                            errorDetail = $"注入失败: {injectError} (错误码: {injectResult})";
-                            logBuilder.AppendLine($"[启动流程] ? {errorDetail}");
-                        }
+                        gameStarted = await LaunchViaElevatedProcessAsync(gameExePath, dllPath, arguments, logBuilder);
                     }
                     else
                     {
@@ -306,6 +296,63 @@ namespace FufuLauncher.Services
                 log.AppendLine($"[普通启动] ? 异常: {ex.Message}");
                 return false;
             }
+        }
+
+        private async Task<bool> LaunchViaElevatedProcessAsync(string gameExePath, string dllPath, string arguments, StringBuilder log)
+        {
+            try
+            {
+                var currentExe = Process.GetCurrentProcess().MainModule?.FileName ?? Environment.ProcessPath;
+                if (string.IsNullOrEmpty(currentExe))
+                {
+                    log.AppendLine("[启动流程] ? 无法定位启动器可执行文件");
+                    return false;
+                }
+
+                var psi = new ProcessStartInfo
+                {
+                    FileName = currentExe,
+                    Arguments = BuildElevatedArgumentString(gameExePath, dllPath, arguments),
+                    UseShellExecute = true,
+                    Verb = "runas",
+                    WorkingDirectory = Path.GetDirectoryName(currentExe)
+                };
+
+                log.AppendLine("[启动流程] 以管理员权限启动注入进程...");
+
+                using var process = Process.Start(psi);
+                if (process == null)
+                {
+                    log.AppendLine("[启动流程] ? 管理员注入进程启动失败");
+                    return false;
+                }
+
+                await process.WaitForExitAsync();
+                log.AppendLine($"[启动流程] 管理员注入进程退出，代码: {process.ExitCode}");
+
+                return process.ExitCode == 0;
+            }
+            catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+            {
+                log.AppendLine("[启动流程] 管理员授权被用户取消");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                log.AppendLine($"[启动流程] ? 管理员注入进程异常: {ex.Message}");
+                return false;
+            }
+        }
+
+        private static string BuildElevatedArgumentString(string gameExePath, string dllPath, string commandLineArgs)
+        {
+            static string Quote(string value)
+            {
+                if (string.IsNullOrEmpty(value)) return "\"\"";
+                return $"\"{value.Replace("\"", "\"\"")}\"";
+            }
+
+            return $"--elevated-inject {Quote(gameExePath)} {Quote(dllPath)} {Quote(commandLineArgs ?? string.Empty)}";
         }
 
         private async Task LaunchAdditionalProgramAsync()

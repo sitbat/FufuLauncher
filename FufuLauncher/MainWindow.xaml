@@ -9,7 +9,7 @@
     MinHeight="500"
     PersistenceId="MainWindow"
     mc:Ignorable="d">
-    
+
     <Grid>
         <Grid x:Name="GlobalBackgroundHost" IsHitTestVisible="False">
             <Image x:Name="GlobalBackgroundImage"
@@ -24,7 +24,7 @@
         </Grid>
 
         <Frame x:Name="AgreementFrame" Visibility="Collapsed" Background="Transparent"/>
-        
+
         <NavigationView x:Name="NavigationView"
                         PaneDisplayMode="Left"
                         IsPaneOpen="False"
@@ -35,14 +35,14 @@
                         OpenPaneLength="150"
                         CompactPaneLength="60"
                         Background="Transparent">
-            
+
             <NavigationView.Resources>
                 <Style TargetType="NavigationViewItem">
                     <Setter Property="MinHeight" Value="48"/>
                     <Setter Property="Margin" Value="0,1,0,1"/>
                 </Style>
             </NavigationView.Resources>
-            
+
             <NavigationView.PaneHeader>
                 <TextBlock Text="" 
                            FontSize="13" 
@@ -50,7 +50,7 @@
                            Margin="12,8,0,8"
                            VerticalAlignment="Center"/>
             </NavigationView.PaneHeader>
-            
+
             <NavigationView.MenuItems>
                 <NavigationViewItem Content="主页" Tag="FufuLauncher.ViewModels.MainViewModel">
                     <NavigationViewItem.Icon>
@@ -83,7 +83,7 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
-            
+
             <NavigationView.FooterMenuItems>
                 <NavigationViewItem Content="设置" Tag="FufuLauncher.ViewModels.SettingsViewModel">
                     <NavigationViewItem.Icon>
@@ -98,7 +98,7 @@
 
             <Frame x:Name="ContentFrame" Background="Transparent" />
         </NavigationView>
-        
+
         <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
             <StackPanel x:Name="NotificationPanel" 
                         Orientation="Vertical" 
@@ -109,7 +109,7 @@
                         Margin="0,0,24,24"
                         IsHitTestVisible="True"/>
         </Grid>
-    
+
         <Grid x:Name="AppTitleBar" 
               Height="40" 
               HorizontalAlignment="Stretch"
@@ -121,7 +121,7 @@
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            
+
             <Image x:Name="TitleBarIcon" 
                    Grid.Column="0" 
                    Width="24" 
@@ -129,7 +129,7 @@
                    Margin="0,0,0,0"
                    VerticalAlignment="Center"
                    HorizontalAlignment="Left"/>
-            
+
             <TextBlock x:Name="TitleBarText"
                        Grid.Column="1" 
                        Text="芙芙启动器"
