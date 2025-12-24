@@ -304,6 +304,12 @@
                                       OnContent="已启用"
                                       IsOn="{x:Bind ViewModel.IsBackgroundEnabled, Mode=TwoWay}"/>
                         
+                        <ToggleSwitch Header="将背景应用到所有页面"
+                                      OffContent="仅主页"
+                                      OnContent="所有页面"
+                                      IsOn="{x:Bind ViewModel.IsGlobalBackgroundEnabled, Mode=TwoWay}"
+                                      Margin="0,8,0,0"/>
+                        
                         <StackPanel Margin="0,16,0,0"
                                     Visibility="{x:Bind ViewModel.IsBackgroundEnabled, Mode=OneWay}">
                             

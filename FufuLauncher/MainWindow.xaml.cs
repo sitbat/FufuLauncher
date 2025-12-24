@@ -142,6 +142,14 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
+            var globalBgSetting = await _localSettingsService.ReadSettingAsync("UseGlobalBackground");
+            bool useGlobalBg = globalBgSetting == null ? true : Convert.ToBoolean(globalBgSetting);
+            if (!useGlobalBg)
+            {
+                await ClearGlobalBackgroundAsync();
+                return;
+            }
+
             var customPathObj = await _localSettingsService.ReadSettingAsync("CustomBackgroundPath");
             var customPath = customPathObj?.ToString();
             var hasCustom = !string.IsNullOrEmpty(customPath) && File.Exists(customPath);

@@ -8,6 +8,7 @@ using FufuLauncher.Contracts.Services;
 using FufuLauncher.Models;
 using FufuLauncher.Services;
 using FufuLauncher.Services.Background;
+using FufuLauncher.Messages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CommunityToolkit.Mvvm.Messaging.Messages;
@@ -64,6 +65,7 @@ namespace FufuLauncher.ViewModels
         private bool _isBetterGIIntegrationEnabled;
         [ObservableProperty]
         private bool _isBetterGICloseOnExitEnabled;
+        [ObservableProperty] private bool _isGlobalBackgroundEnabled = true;
 
         public IAsyncRelayCommand OpenBackgroundCacheFolderCommand
         {
@@ -252,6 +254,7 @@ namespace FufuLauncher.ViewModels
             OnPropertyChanged(nameof(IsShortTermSupportEnabled));
             OnPropertyChanged(nameof(IsBetterGIIntegrationEnabled));
             OnPropertyChanged(nameof(IsBetterGICloseOnExitEnabled));
+            OnPropertyChanged(nameof(IsGlobalBackgroundEnabled));
 
             _isInitializing = false;
         }
@@ -264,6 +267,9 @@ namespace FufuLauncher.ViewModels
 
             var enabledJson = await _localSettingsService.ReadSettingAsync(LocalSettingsService.IsBackgroundEnabledKey);
             IsBackgroundEnabled = enabledJson == null ? true : Convert.ToBoolean(enabledJson);
+
+            var globalBgJson = await _localSettingsService.ReadSettingAsync("UseGlobalBackground");
+            IsGlobalBackgroundEnabled = globalBgJson == null ? true : Convert.ToBoolean(globalBgJson);
 
             var languageJson = await _localSettingsService.ReadSettingAsync("AppLanguage");
             int languageValue = languageJson != null ? Convert.ToInt32(languageJson) : 0;
@@ -530,6 +536,13 @@ namespace FufuLauncher.ViewModels
             {
                 _ = RefreshMainPageBackground();
             }
+        }
+
+        partial void OnIsGlobalBackgroundEnabledChanged(bool value)
+        {
+            Debug.WriteLine($"SettingsViewModel: 保存全局背景开关 {value}");
+            _ = _localSettingsService.SaveSettingAsync("UseGlobalBackground", value);
+            WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
         }
         
         partial void OnIsShortTermSupportEnabledChanged(bool value)
