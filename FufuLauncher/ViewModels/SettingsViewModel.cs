@@ -58,14 +58,11 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private string _launchArgsPreview = "";
         [ObservableProperty] private string _customBackgroundPath;
         [ObservableProperty] private bool _hasCustomBackground;
-        [ObservableProperty]
-        private string _backgroundCacheFolderPath;
-        [ObservableProperty]
-        private bool _isShortTermSupportEnabled;
-        [ObservableProperty]
-        private bool _isBetterGIIntegrationEnabled;
-        [ObservableProperty]
-        private bool _isBetterGICloseOnExitEnabled;
+        [ObservableProperty] private double _panelBackgroundOpacity = 0.5;
+        [ObservableProperty] private string _backgroundCacheFolderPath;
+        [ObservableProperty] private bool _isShortTermSupportEnabled;
+        [ObservableProperty] private bool _isBetterGIIntegrationEnabled;
+        [ObservableProperty] private bool _isBetterGICloseOnExitEnabled;
         [ObservableProperty] private bool _isGlobalBackgroundEnabled = true;
         [ObservableProperty] private double _globalBackgroundOverlayOpacity = 0.3;
         [ObservableProperty] private double _contentFrameBackgroundOpacity = 0.5;
@@ -348,7 +345,33 @@ namespace FufuLauncher.ViewModels
 
             var saveWindowSizeJson = await _localSettingsService.ReadSettingAsync("IsSaveWindowSizeEnabled");
             IsSaveWindowSizeEnabled = saveWindowSizeJson != null && Convert.ToBoolean(saveWindowSizeJson);
+            
+            var panelOpacityJson = await _localSettingsService.ReadSettingAsync("PanelBackgroundOpacity");
+            try
+            {
+                PanelBackgroundOpacity = panelOpacityJson != null ? Convert.ToDouble(panelOpacityJson) : 0.5;
+            }
+            catch
+            {
+                PanelBackgroundOpacity = 0.5;
+            }
         }
+
+        partial void OnPanelBackgroundOpacityChanged(double value)
+        {
+            var clamped = Math.Clamp(value, 0.0, 1.0);
+            
+            if (Math.Abs(clamped - value) > 0.001)
+            {
+                PanelBackgroundOpacity = clamped;
+                return;
+            }
+            
+            _localSettingsService.SaveSettingAsync("PanelBackgroundOpacity", clamped);
+            
+            WeakReferenceMessenger.Default.Send(new PanelOpacityChangedMessage(clamped));
+        }
+        
         
         partial void OnCurrentWindowBackdropChanged(WindowBackdropType value)
         {

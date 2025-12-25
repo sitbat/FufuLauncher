@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Security.Principal;
 using CommunityToolkit.Mvvm.Messaging;
 using FufuLauncher.Contracts.Services;
@@ -67,7 +66,7 @@ public sealed partial class MainWindow : WindowEx
 
         ExtendsContentIntoTitleBar = true;
         
-        this.AppWindow.Closing += AppWindow_Closing;
+        AppWindow.Closing += AppWindow_Closing;
 
         dispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
         settings = new UISettings();
@@ -87,7 +86,6 @@ public sealed partial class MainWindow : WindowEx
         if (Content is FrameworkElement rootElement)
         {
             rootElement.ActualThemeChanged += (s, e) => UpdateBackgroundOverlayTheme();
-            // 初始化时执行一次
             UpdateBackgroundOverlayTheme();
         }
         
@@ -130,7 +128,7 @@ public sealed partial class MainWindow : WindowEx
             _minimizeToTray = m.Value;
         });
 
-        this.Activated += OnWindowActivated;
+        Activated += OnWindowActivated;
     }
     
     private void ShowWindow()
@@ -187,29 +185,23 @@ public sealed partial class MainWindow : WindowEx
 
     private void UpdateBackgroundOverlayTheme()
     {
-        // 确保在 UI 线程执行
         if (Content is FrameworkElement rootElement)
         {
-            // 获取当前主题
             var currentTheme = rootElement.ActualTheme;
-
-            // 如果是系统默认，则需要判断系统实际状态（通常 ActualTheme 会自动解析，但这里做个保险）
+            
             if (currentTheme == ElementTheme.Default)
             {
                 currentTheme = Application.Current.RequestedTheme == ApplicationTheme.Dark 
                     ? ElementTheme.Dark 
                     : ElementTheme.Light;
             }
-
-            //根据主题设置颜色
+            
             if (currentTheme == ElementTheme.Dark)
             {
-                // 深色模式：使用黑色滤镜，让背景变暗，确保白字清晰
                 GlobalBackgroundOverlay.Fill = new SolidColorBrush(Colors.Black);
             }
             else
             {
-                // 浅色模式：使用白色滤镜，让背景变亮，确保黑字清晰
                 GlobalBackgroundOverlay.Fill = new SolidColorBrush(Colors.White);
             }
 
@@ -384,7 +376,6 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            // 尝试恢复保存的窗口大小
             var localSettings = App.GetService<ILocalSettingsService>();
             var saveEnabledObj = await localSettings.ReadSettingAsync("IsSaveWindowSizeEnabled");
             
@@ -397,8 +388,8 @@ public sealed partial class MainWindow : WindowEx
                 {
                     if (double.TryParse(widthObj.ToString(), out double w) && double.TryParse(heightObj.ToString(), out double h))
                     {
-                        this.Width = w;
-                        this.Height = h;
+                        Width = w;
+                        Height = h;
                         Debug.WriteLine($"[MainWindow] 已恢复窗口大小: {w}x{h}");
                         return;
                     }
@@ -406,7 +397,7 @@ public sealed partial class MainWindow : WindowEx
             }
 
             var displayArea = Microsoft.UI.Windowing.DisplayArea.GetFromWindowId(
-                this.AppWindow.Id,
+                AppWindow.Id,
                 Microsoft.UI.Windowing.DisplayAreaFallback.Primary
             );
 
@@ -417,26 +408,26 @@ public sealed partial class MainWindow : WindowEx
 
                 if (screenWidth >= 2560 && screenHeight >= 1440)
                 {
-                    this.Width = 1750;
-                    this.Height = 1000;
+                    Width = 1750;
+                    Height = 1000;
                 }
                 else
                 {
-                    this.Width = 1360;
-                    this.Height = 768;
+                    Width = 1360;
+                    Height = 768;
                 }
             }
             else
             {
-                this.Width = 1360;
-                this.Height = 768;
+                Width = 1360;
+                Height = 768;
             }
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"设置初始窗口大小失败: {ex.Message}");
-            this.Width = 1360;
-            this.Height = 768;
+            Width = 1360;
+            Height = 768;
         }
     }
 
@@ -444,7 +435,7 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            this.SetTitleBar(AppTitleBar);
+            SetTitleBar(AppTitleBar);
 
             var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico");
             if (File.Exists(iconPath))
@@ -459,7 +450,7 @@ public sealed partial class MainWindow : WindowEx
             Debug.WriteLine($"设置标题栏失败: {ex.Message}");
         }
 
-        this.Activated -= OnWindowActivated;
+        Activated -= OnWindowActivated;
     }
 
     private void UpdateTitleBarWithAdminStatus()
@@ -467,7 +458,6 @@ public sealed partial class MainWindow : WindowEx
         try
         {
             bool isAdmin = IsRunningAsAdministrator();
-            // 使用硬编码的标题基础
             var baseTitle = "芙芙启动器";
             TitleBarText.Text = isAdmin ? $"{baseTitle} [管理员]" : baseTitle;
         }

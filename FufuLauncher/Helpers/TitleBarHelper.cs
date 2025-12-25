@@ -9,7 +9,7 @@ using Windows.UI.ViewManagement;
 namespace FufuLauncher.Helpers;
 
 
-// https://github.com/microsoft/TemplateStudio/issues/4516
+
 internal class TitleBarHelper
 {
     private const int WAINACTIVE = 0x00;

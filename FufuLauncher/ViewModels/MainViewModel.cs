@@ -14,6 +14,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Media.Playback;
+using Windows.UI;
 
 namespace FufuLauncher.ViewModels
 {
@@ -43,6 +44,8 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private ObservableCollection<PostItem> _announcementPosts = new();
         [ObservableProperty] private ObservableCollection<PostItem> _infoPosts = new();
         [ObservableProperty] private ObservableCollection<SocialMediaItem> _socialMediaList = new();
+        [ObservableProperty] private Brush _panelBackgroundBrush;
+        private double _panelOpacityValue = 0.5;
 
         private BannerItem _currentBanner;
         public BannerItem CurrentBanner
@@ -155,6 +158,16 @@ namespace FufuLauncher.ViewModels
 
             _gameMonitoringCts = new CancellationTokenSource();
             _monitoringTask = StartGameMonitoringLoopAsync(_gameMonitoringCts.Token);
+            
+            WeakReferenceMessenger.Default.Register<PanelOpacityChangedMessage>(this, (r, m) =>
+            {
+                
+                _dispatcherQueue.TryEnqueue(() =>
+                {
+                    _panelOpacityValue = m.Value;
+                    UpdatePanelBackgroundBrush();
+                });
+            });
         }
 
         public async Task InitializeAsync()
@@ -165,11 +178,74 @@ namespace FufuLauncher.ViewModels
             await LoadContentAsync();
             await LoadCheckinStatusAsync();
             UseInjection = await _gameLauncherService.GetUseInjectionAsync();
+
+            
+            try 
+            {
+                var savedOpacity = await _localSettingsService.ReadSettingAsync("PanelBackgroundOpacity");
+                if (savedOpacity != null)
+                {
+                    _panelOpacityValue = Convert.ToDouble(savedOpacity);
+                }
+            }
+            catch { /* 忽略转换错误，使用默认值 */ }
+
+            UpdatePanelBackgroundBrush(); 
             UpdateLaunchButtonState();
         }
+        public void SetPanelOpacity(double opacity)
+        {
+            _panelOpacityValue = opacity;
+            
+            _dispatcherQueue.TryEnqueue(UpdatePanelBackgroundBrush);
+        }
+        
+        
+        private void UpdatePanelBackgroundBrush()
+        {
+            try
+            {
+                
+                var themeService = App.GetService<IThemeSelectorService>();
+                var currentTheme = themeService.Theme;
+
+                
+                if (currentTheme == ElementTheme.Default)
+                {
+                    currentTheme = Application.Current.RequestedTheme == ApplicationTheme.Light 
+                        ? ElementTheme.Light 
+                        : ElementTheme.Dark;
+                }
+
+                
+                Color baseColor;
+                if (currentTheme == ElementTheme.Light)
+                {
+                    
+                    baseColor = Microsoft.UI.Colors.White;
+                }
+                else
+                {
+                    
+                    baseColor = Color.FromArgb(255, 32, 32, 32);
+                }
+
+                
+                
+                PanelBackgroundBrush = new SolidColorBrush(baseColor) { Opacity = _panelOpacityValue };
+                
+                Debug.WriteLine($"[MainViewModel] 背景已更新 - 主题: {currentTheme}, 透明度: {_panelOpacityValue}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[MainViewModel] 更新背景失败: {ex.Message}");
+            }
+        }
+
 
         public async Task OnPageReturnedAsync()
         {
+            await LoadUserPreferencesAsync();
             await ForceRefreshGameStateAsync();
         }
 
@@ -180,6 +256,30 @@ namespace FufuLauncher.ViewModels
             {
                 PreferVideoBackground = Convert.ToBoolean(pref);
             }
+
+            
+            var panelOpacityJson = await _localSettingsService.ReadSettingAsync("PanelBackgroundOpacity");
+            try
+            {
+                _panelOpacityValue = panelOpacityJson != null ? Convert.ToDouble(panelOpacityJson) : 0.5;
+            }
+            catch
+            {
+                _panelOpacityValue = 0.5;
+            }
+        }
+
+        
+        public async Task SetPanelOpacityAsync(double opacity)
+        {
+            _panelOpacityValue = Math.Clamp(opacity, 0.0, 1.0);
+            UpdatePanelBackgroundBrush();
+        
+            
+            await _localSettingsService.SaveSettingAsync("PanelBackgroundOpacity", _panelOpacityValue);
+        
+            
+            OnPropertyChanged(nameof(PanelBackgroundBrush));
         }
 
         private async Task LoadCustomBackgroundPathAsync()
