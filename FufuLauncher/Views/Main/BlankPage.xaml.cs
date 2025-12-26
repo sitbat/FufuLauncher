@@ -5,7 +5,6 @@ using CommunityToolkit.Mvvm.Messaging;
 using FufuLauncher.Contracts.Services;
 using FufuLauncher.Helpers;
 using FufuLauncher.Messages;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -64,6 +63,43 @@ namespace FufuLauncher.Views
         private async void ApplyPath_Click(object sender, RoutedEventArgs e)
         {
             await ProcessPathInput(PathTextBox.Text.Trim());
+        }
+        
+        private void DownloadGame_Click(object sender, RoutedEventArgs e)
+        {
+
+            string targetPath = _currentConfig?.GamePath;
+
+
+            if (string.IsNullOrWhiteSpace(targetPath))
+            {
+                targetPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Genshin Game");
+            }
+
+
+            if (!Directory.Exists(targetPath))
+            {
+                try 
+                {
+                    Directory.CreateDirectory(targetPath);
+                }
+                catch (Exception ex)
+                {
+                    var dialog = new ContentDialog
+                    {
+                        Title = "路径错误",
+                        Content = $"无法创建游戏目录: {targetPath}\n错误: {ex.Message}",
+                        CloseButtonText = "确定",
+                        XamlRoot = this.XamlRoot
+                    };
+                    _ = dialog.ShowAsync();
+                    return;
+                }
+            }
+
+
+            var downloadWindow = new FufuLauncher.Views.DownloadWindow(targetPath);
+            downloadWindow.Activate();
         }
 
         private async Task ProcessPathInput(string path)
