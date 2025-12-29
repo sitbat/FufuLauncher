@@ -4,7 +4,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FufuLauncher.Models;
+using FufuLauncher.Views;
 
 namespace FufuLauncher.ViewModels;
 
@@ -47,6 +49,13 @@ public partial class ControlPanelModel : ObservableObject
     
     [ObservableProperty]
     private bool _disableInputHotSwitch;
+    
+    [RelayCommand]
+    private void OpenDiagnosticsWindow()
+    {
+        var window = new DiagnosticsWindow();
+        window.Activate();
+    }
 
     partial void OnDisableInputHotSwitchChanged(bool value)
     {

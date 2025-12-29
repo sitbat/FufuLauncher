@@ -375,17 +375,11 @@ namespace FufuLauncher.Views
                 });
             }
         }
+        
 
-        private async void OpenAnnouncement_Click(object sender, RoutedEventArgs e)
+        private void OpenAnnouncement_Click(object sender, RoutedEventArgs e)
         {
-            var announcementWindow = new Window { Title = "游戏公告" };
-            var webView = new Microsoft.UI.Xaml.Controls.WebView2();
-            announcementWindow.Closed += (s, args) => webView.Close();
-            announcementWindow.Content = webView;
-
-            await webView.EnsureCoreWebView2Async();
-            webView.Source = new Uri("https://sdk.mihoyo.com/hk4e/announcement/index.html?auth_appid=announcement&authkey_ver=1&bundle_id=hk4e_cn&channel_id=1&game=hk4e&game_biz=hk4e_cn&lang=zh-cn&level=60&platform=pc&region=cn_gf01&sdk_presentation_style=fullscreen&sdk_screen_transparent=true&sign_type=2&uid=100000000");
-
+            var announcementWindow = new FufuLauncher.Views.AnnouncementWindow();
             announcementWindow.Activate();
         }
 

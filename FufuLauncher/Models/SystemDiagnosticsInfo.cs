@@ -1,0 +1,22 @@
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace FufuLauncher.Models;
+
+public partial class SystemDiagnosticsInfo : ObservableObject
+{
+    [ObservableProperty] private string _osVersion = "未知";
+
+    [ObservableProperty] private string _cpuName = "未知";
+
+    [ObservableProperty] private string _gpuName = "未知";
+
+    [ObservableProperty] private string _totalMemory = "未知";
+
+    [ObservableProperty] private string _screenResolution = "未知";
+
+    [ObservableProperty] private string _currentRefreshRate = "未知";
+
+    [ObservableProperty] private string _maxRefreshRate = "未知";
+
+    [ObservableProperty] private string _suggestion = "未知";
+}

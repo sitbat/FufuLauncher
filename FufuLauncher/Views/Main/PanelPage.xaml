@@ -316,5 +316,11 @@
                    HorizontalAlignment="Left"
                    Margin="50,10,0,0"
                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        
+        <Button Command="{x:Bind ViewModel.OpenDiagnosticsWindowCommand}" 
+                Content="系统诊断"
+                HorizontalAlignment="Right" 
+                VerticalAlignment="Bottom"
+                Margin="0,0,20,20"/>
     </Grid>
 </Page>
