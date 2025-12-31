@@ -168,13 +168,10 @@ public sealed partial class MainWindow : WindowEx
     
     private async void CheckAndWarnUacElevation()
     {
-        // 1. 核心检测：如果是 UAC 提权导致的管理员
         if (IsUacElevatedWithConsent())
         {
-            // 2. 确保 XamlRoot 已就绪（ContentDialog 需要它）
             if (this.Content is FrameworkElement rootElement)
             {
-                // 如果窗口刚启动，XamlRoot 可能还是 null，尝试等待它加载
                 if (rootElement.XamlRoot == null)
                 {
                     var tcs = new TaskCompletionSource<bool>();
@@ -184,11 +181,9 @@ public sealed partial class MainWindow : WindowEx
                         tcs.TrySetResult(true);
                     }
                     rootElement.Loaded += OnLoaded;
-                    // 如果已经加载了就不会触发 Loaded，所以加个超时保险或者直接判断
                     if (rootElement.XamlRoot == null) await tcs.Task;
                 }
-
-                // 3. 创建并显示 WinUI 3 原生弹窗
+                
                 ContentDialog dialog = new ContentDialog();
             
                 // 必须设置 XamlRoot
@@ -215,7 +210,6 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            // 必须先确认是管理员
             if (!IsRunningAsAdministrator()) return false;
 
             IntPtr tokenHandle = IntPtr.Zero;
@@ -230,8 +224,6 @@ public sealed partial class MainWindow : WindowEx
                         if (GetTokenInformation(tokenHandle, TOKEN_INFORMATION_CLASS.TokenElevationType, ptr, (uint)size, out _))
                         {
                             var type = (TOKEN_ELEVATION_TYPE)Marshal.ReadInt32(ptr);
-                            // Full = UAC 开启且用户同意了提权
-                            // Default = UAC 关闭或者是内置 Admin (通常不受 UIPI 严格限制或用户已知情)
                             return type == TOKEN_ELEVATION_TYPE.TokenElevationTypeFull;
                         }
                     }
@@ -774,6 +766,7 @@ public sealed partial class MainWindow : WindowEx
             "FufuLauncher.ViewModels.OtherViewModel" => typeof(Views.OtherPage),
             "FufuLauncher.ViewModels.CalculatorViewModel" => typeof(Views.CalculatorPage),
             "FufuLauncher.ViewModels.ControlPanelModel" => typeof(Views.PanelPage),
+            "FufuLauncher.ViewModels.PluginViewModel" => typeof(Views.PluginPage),
             _ => null
         };
 

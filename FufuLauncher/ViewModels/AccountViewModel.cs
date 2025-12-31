@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -13,8 +14,16 @@ public partial class AccountViewModel : ObservableRecipient
 {
     private readonly IUserInfoService _userInfoService;
     private readonly IUserConfigService _userConfigService;
+    private const int MaxAccounts = 4; 
+    
+    [ObservableProperty] 
+    [NotifyPropertyChangedFor(nameof(IsLoggedIn))]
+    [NotifyPropertyChangedFor(nameof(IsNotLoggedIn))]
+    private AccountInfo? _currentAccount;
+    
+    public bool IsLoggedIn => CurrentAccount != null;
+    public bool IsNotLoggedIn => CurrentAccount == null;
 
-    [ObservableProperty] private AccountInfo? _currentAccount;
     [ObservableProperty] private string _loginButtonText = "登录米游社";
     [ObservableProperty] private string _statusMessage = "";
 
@@ -22,23 +31,14 @@ public partial class AccountViewModel : ObservableRecipient
     [ObservableProperty] private UserFullInfoResponse? _userFullInfo;
     [ObservableProperty] private bool _isLoadingUserInfo;
 
+    [ObservableProperty] private ObservableCollection<AccountInfo> _savedAccounts = new();
 
-    public IRelayCommand LoginCommand
-    {
-        get;
-    }
-    public IRelayCommand LogoutCommand
-    {
-        get;
-    }
-    public IRelayCommand LoadUserInfoCommand
-    {
-        get;
-    }
-    public IRelayCommand OpenGenshinDataCommand
-    {
-        get;
-    }
+    public IRelayCommand LoginCommand { get; }
+    public IRelayCommand LogoutCommand { get; }
+    public IRelayCommand LoadUserInfoCommand { get; }
+    public IRelayCommand OpenGenshinDataCommand { get; }
+    public IRelayCommand AddAccountCommand { get; }
+    public IRelayCommand<AccountInfo> SwitchAccountCommand { get; }
 
     public AccountViewModel(
         ILocalSettingsService localSettingsService,
@@ -51,8 +51,9 @@ public partial class AccountViewModel : ObservableRecipient
         LoginCommand = new AsyncRelayCommand(LoginAsync);
         LogoutCommand = new RelayCommand(Logout);
         LoadUserInfoCommand = new AsyncRelayCommand(LoadUserInfoAsync);
-
         OpenGenshinDataCommand = new AsyncRelayCommand(OpenGenshinDataAsync);
+        AddAccountCommand = new AsyncRelayCommand(AddNewAccountAsync);
+        SwitchAccountCommand = new AsyncRelayCommand<AccountInfo>(SwitchToAccountAsync);
 
         _ = LoadAccountInfo();
     }
@@ -62,15 +63,12 @@ public partial class AccountViewModel : ObservableRecipient
         try
         {
             StatusMessage = "正在打开原神数据窗口...";
-
             var window = App.GetService<GenshinDataWindow>();
-
             if (window.Visible)
             {
                 window.Activate();
                 return;
             }
-
             window.Activate();
             StatusMessage = "窗口已打开";
         }
@@ -90,8 +88,6 @@ public partial class AccountViewModel : ObservableRecipient
 
             if (!string.IsNullOrEmpty(displayConfig.GameUid))
             {
-                Debug.WriteLine($"找到显示配置: {displayConfig.Nickname}, UID: {displayConfig.GameUid}");
-
                 CurrentAccount = new AccountInfo
                 {
                     Nickname = displayConfig.Nickname,
@@ -105,16 +101,134 @@ public partial class AccountViewModel : ObservableRecipient
             }
             else
             {
-                Debug.WriteLine("未找到显示配置");
                 CurrentAccount = null;
                 StatusMessage = "未找到登录信息";
+            }
+            await LoadSavedAccountsListAsync();
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"加载账户信息失败: {ex.Message}";
+            CurrentAccount = null;
+        }
+    }
+
+    private async Task LoadSavedAccountsListAsync()
+    {
+        SavedAccounts.Clear();
+        var baseDir = AppContext.BaseDirectory;
+        var files = Directory.GetFiles(baseDir, "config_*.json");
+
+        foreach (var file in files)
+        {
+            var fileName = Path.GetFileName(file);
+            var uid = fileName.Replace("config_", "").Replace(".json", "");
+
+            if (CurrentAccount != null && uid == CurrentAccount.GameUid)
+                continue;
+
+            var accountInfo = new AccountInfo { GameUid = uid, Nickname = $"用户 {uid}" };
+            var displayFile = Path.Combine(baseDir, $"display_{uid}.json");
+            if (File.Exists(displayFile))
+            {
+                try
+                {
+                    var json = await File.ReadAllTextAsync(displayFile);
+                    var displayConfig = JsonSerializer.Deserialize<UserDisplayConfig>(json);
+                    if (displayConfig != null)
+                    {
+                        accountInfo.Nickname = displayConfig.Nickname;
+                        accountInfo.AvatarUrl = displayConfig.AvatarUrl;
+                        accountInfo.Server = displayConfig.Server;
+                        accountInfo.Level = displayConfig.Level;
+                    }
+                }
+                catch { }
+            }
+            SavedAccounts.Add(accountInfo);
+        }
+    }
+
+    private async Task ArchiveCurrentAccountAsync()
+    {
+        if (CurrentAccount == null || string.IsNullOrEmpty(CurrentAccount.GameUid)) return;
+
+        var baseDir = AppContext.BaseDirectory;
+        var currentConfigPath = Path.Combine(baseDir, "config.json");
+
+        if (File.Exists(currentConfigPath))
+        {
+            var targetConfigPath = Path.Combine(baseDir, $"config_{CurrentAccount.GameUid}.json");
+            File.Copy(currentConfigPath, targetConfigPath, true);
+
+            var displayConfig = new UserDisplayConfig
+            {
+                Nickname = CurrentAccount.Nickname,
+                GameUid = CurrentAccount.GameUid,
+                Server = CurrentAccount.Server,
+                AvatarUrl = CurrentAccount.AvatarUrl,
+                Level = CurrentAccount.Level
+            };
+            var displayJson = JsonSerializer.Serialize(displayConfig);
+            await File.WriteAllTextAsync(Path.Combine(baseDir, $"display_{CurrentAccount.GameUid}.json"), displayJson);
+        }
+    }
+
+    private async Task AddNewAccountAsync()
+    {
+        if (SavedAccounts.Count + (CurrentAccount != null ? 1 : 0) >= MaxAccounts)
+        {
+            StatusMessage = $"已达到最大账户数量限制 ({MaxAccounts}个)";
+            return;
+        }
+        await ArchiveCurrentAccountAsync();
+        var configPath = Path.Combine(AppContext.BaseDirectory, "config.json");
+        if (File.Exists(configPath)) File.Delete(configPath);
+        
+        CurrentAccount = null;
+        GameRolesInfo = null;
+        UserFullInfo = null;
+        await LoginAsync();
+    }
+
+    private async Task SwitchToAccountAsync(AccountInfo? targetAccount)
+    {
+        if (targetAccount == null) return;
+        StatusMessage = $"正在切换到 {targetAccount.Nickname}...";
+
+        try
+        {
+            await ArchiveCurrentAccountAsync();
+
+            var baseDir = AppContext.BaseDirectory;
+            var targetConfigPath = Path.Combine(baseDir, $"config_{targetAccount.GameUid}.json");
+            var mainConfigPath = Path.Combine(baseDir, "config.json");
+
+            if (File.Exists(targetConfigPath))
+            {
+                File.Copy(targetConfigPath, mainConfigPath, true);
+                var targetDisplayPath = Path.Combine(baseDir, $"display_{targetAccount.GameUid}.json");
+                if (File.Exists(targetDisplayPath))
+                {
+                    var json = await File.ReadAllTextAsync(targetDisplayPath);
+                    var displayConfig = JsonSerializer.Deserialize<UserDisplayConfig>(json);
+                    if (displayConfig != null)
+                    {
+                        await _userConfigService.SaveDisplayConfigAsync(displayConfig);
+                    }
+                }
+                await LoadAccountInfo();
+                await LoadUserInfoAsync();
+                StatusMessage = "切换成功";
+            }
+            else
+            {
+                StatusMessage = "切换失败：配置文件丢失";
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"ERROR: 加载账户信息失败: {ex.Message}");
-            StatusMessage = $"加载账户信息失败: {ex.Message}";
-            CurrentAccount = null;
+            StatusMessage = $"切换出错: {ex.Message}";
         }
     }
 
@@ -122,9 +236,7 @@ public partial class AccountViewModel : ObservableRecipient
     {
         try
         {
-            Debug.WriteLine("========== 开始登录流程 ==========");
             StatusMessage = "正在打开登录窗口...";
-
             var loginWindow = new LoginWebViewDialog();
             loginWindow.Activate();
 
@@ -134,7 +246,6 @@ public partial class AccountViewModel : ObservableRecipient
 
             if (success)
             {
-                Debug.WriteLine("登录窗口返回成功");
                 StatusMessage = "登录成功，正在加载信息...";
                 await Task.Delay(500);
 
@@ -149,24 +260,23 @@ public partial class AccountViewModel : ObservableRecipient
 
                     if (config?.Account != null && !string.IsNullOrEmpty(config.Account.Cookie))
                     {
-                        Debug.WriteLine("调用 SaveUserDataAsync 保存配置");
                         await _userInfoService.SaveUserDataAsync(config.Account.Cookie, config.Account.Stuid);
                     }
                 }
 
                 await LoadAccountInfo();
                 await LoadUserInfoAsync();
+                await LoadSavedAccountsListAsync();
                 StatusMessage = "登录成功";
             }
             else
             {
-                Debug.WriteLine("登录窗口返回失败");
                 StatusMessage = "登录已取消";
+                await LoadAccountInfo();
             }
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"ERROR: 登录出错: {ex.Message}");
             StatusMessage = $"登录出错: {ex.Message}";
         }
     }
@@ -180,19 +290,14 @@ public partial class AccountViewModel : ObservableRecipient
             IsLoadingUserInfo = true;
             StatusMessage = "正在加载用户信息...";
 
-            Debug.WriteLine("\n========== 开始加载用户信息 ==========");
-
             var configPath = Path.Combine(AppContext.BaseDirectory, "config.json");
             if (!File.Exists(configPath))
             {
-                Debug.WriteLine("ERROR: config.json 不存在");
                 StatusMessage = "请先登录";
                 return;
             }
 
             var json = await File.ReadAllTextAsync(configPath);
-            Debug.WriteLine($"读取 config.json: {json.Length} 字符");
-
             var config = JsonSerializer.Deserialize<HoyoverseCheckinConfig>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
@@ -200,32 +305,20 @@ public partial class AccountViewModel : ObservableRecipient
 
             if (string.IsNullOrEmpty(config?.Account?.Cookie))
             {
-                Debug.WriteLine("ERROR: Cookie 为空");
                 StatusMessage = "请先登录";
                 return;
             }
 
-            Debug.WriteLine($"Cookie 长度: {config.Account.Cookie.Length}");
-            Debug.WriteLine($"Stuid: {config.Account.Stuid ?? "空"}");
-
             GameRolesInfo = null;
             UserFullInfo = null;
 
-            StatusMessage = "正在请求角色信息...";
-            Debug.WriteLine("调用 GetUserGameRolesAsync...");
             var rolesTask = _userInfoService.GetUserGameRolesAsync(config.Account.Cookie);
-
-            StatusMessage = "正在请求社区信息...";
-            Debug.WriteLine("调用 GetUserFullInfoAsync...");
             var userInfoTask = _userInfoService.GetUserFullInfoAsync(config.Account.Cookie);
 
             await Task.WhenAll(rolesTask, userInfoTask);
 
             GameRolesInfo = await rolesTask;
             UserFullInfo = await userInfoTask;
-
-            Debug.WriteLine($"角色信息加载: retcode={GameRolesInfo?.retcode}, 数量={GameRolesInfo?.data?.list?.Count ?? 0}");
-            Debug.WriteLine($"社区信息加载: retcode={UserFullInfo?.retcode}, 昵称={UserFullInfo?.data?.user_info?.nickname ?? "无"}");
 
             if (GameRolesInfo?.data?.list?.FirstOrDefault() is { } role)
             {
@@ -241,13 +334,9 @@ public partial class AccountViewModel : ObservableRecipient
                 await _userConfigService.SaveDisplayConfigAsync(displayConfig);
                 await LoadAccountInfo();
             }
-
-            Debug.WriteLine("========== 用户信息加载完成 ==========\n");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"ERROR: 加载失败: {ex.Message}");
-            Debug.WriteLine($"堆栈: {ex.StackTrace}");
             StatusMessage = $"加载失败: {ex.Message}";
         }
         finally
@@ -260,10 +349,16 @@ public partial class AccountViewModel : ObservableRecipient
     {
         try
         {
-            Debug.WriteLine("========== 开始退出登录 ==========");
+            if (CurrentAccount != null)
+            {
+                var baseDir = AppContext.BaseDirectory;
+                var backupPath = Path.Combine(baseDir, $"config_{CurrentAccount.GameUid}.json");
+                var displayPath = Path.Combine(baseDir, $"display_{CurrentAccount.GameUid}.json");
+                if(File.Exists(backupPath)) File.Delete(backupPath);
+                if(File.Exists(displayPath)) File.Delete(displayPath);
+            }
 
             await _userConfigService.SaveDisplayConfigAsync(new UserDisplayConfig());
-            Debug.WriteLine("已清空 user.config.json");
 
             var configPath = Path.Combine(AppContext.BaseDirectory, "config.json");
             if (File.Exists(configPath))
@@ -281,12 +376,8 @@ public partial class AccountViewModel : ObservableRecipient
                     config.Account.Stoken = "";
                     config.Account.Mid = "";
 
-                    var newJson = JsonSerializer.Serialize(config, new JsonSerializerOptions
-                    {
-                        WriteIndented = true
-                    });
+                    var newJson = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
                     await File.WriteAllTextAsync(configPath, newJson);
-                    Debug.WriteLine("已清空 config.json 认证信息");
                 }
             }
 
@@ -295,12 +386,11 @@ public partial class AccountViewModel : ObservableRecipient
             UserFullInfo = null;
             LoginButtonText = "登录米游社";
             StatusMessage = "已退出登录";
-
-            Debug.WriteLine("========== 退出登录完成 ==========");
+            
+            await LoadSavedAccountsListAsync();
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"ERROR: 退出失败: {ex.Message}");
             StatusMessage = $"退出失败: {ex.Message}";
         }
     }

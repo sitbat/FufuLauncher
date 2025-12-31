@@ -22,7 +22,7 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private string _statusMessage = string.Empty;
 
         [ObservableProperty] private bool _isAutoClickerEnabled;
-        [ObservableProperty] private string _triggerKey = "F8";
+        [ObservableProperty] private string _triggerKey = "F";
         [ObservableProperty] private string _clickKey = "F";
         [ObservableProperty] private bool _isRecordingTriggerKey;
         [ObservableProperty] private bool _isRecordingClickKey;
@@ -146,7 +146,7 @@ namespace FufuLauncher.ViewModels
                 IsAutoClickerEnabled = autoClickerEnabled != null && Convert.ToBoolean(autoClickerEnabled);
                 _autoClickerService.IsEnabled = IsAutoClickerEnabled;
 
-                TriggerKey = triggerKey?.ToString()?.Trim('"') ?? "F8";
+                TriggerKey = triggerKey?.ToString()?.Trim('"') ?? "F";
                 ClickKey = clickKey?.ToString()?.Trim('"') ?? "F";
 
                 if (Enum.TryParse<VirtualKey>(TriggerKey, out var tk))

@@ -103,6 +103,11 @@
                         <FontIcon Glyph="&#xE835;" FontFamily="Segoe MDL2 Assets" FontSize="28"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem Content="插件管理" Tag="FufuLauncher.ViewModels.PluginViewModel">
+                    <NavigationViewItem.Icon>
+                        <FontIcon Glyph="&#xE7B5;" FontFamily="Segoe MDL2 Assets" FontSize="28"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
 
             <NavigationView.FooterMenuItems>

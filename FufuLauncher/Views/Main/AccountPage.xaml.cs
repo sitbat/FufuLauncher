@@ -1,5 +1,7 @@
 ﻿using System.Diagnostics;
+using FufuLauncher.Models;
 using FufuLauncher.ViewModels;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -27,5 +29,13 @@ public sealed partial class AccountPage : Page
 
 
         await ViewModel.LoadUserInfoAsync();
+    }
+    
+    private void OnSwitchAccountClicked(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.DataContext is AccountInfo account)
+        {
+            ViewModel.SwitchAccountCommand.Execute(account);
+        }
     }
 }

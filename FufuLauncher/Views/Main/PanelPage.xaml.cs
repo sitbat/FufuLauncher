@@ -2,8 +2,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using System;
-using System.Threading.Tasks;
 
 namespace FufuLauncher.Views;
 
@@ -67,6 +65,7 @@ public sealed partial class PanelPage
                     BasicSettingsPage.Visibility = Visibility.Collapsed;
                     AdvancedSettingsPage.Visibility = Visibility.Visible;
                     break;
+                
             }
         }
     }

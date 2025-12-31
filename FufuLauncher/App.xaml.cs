@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿﻿using System.Diagnostics;
 using System.Text.Json;
 using FufuLauncher.Activation;
 using FufuLauncher.Contracts.Services;
@@ -120,6 +120,8 @@ public partial class App : Application
                 services.AddSingleton<INotificationService, NotificationService>();
                 services.AddTransient<CalculatorViewModel>();
                 services.AddTransient<CalculatorPage>();
+                services.AddTransient<PluginViewModel>();
+                services.AddTransient<PluginPage>();
                 services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));
             })
             .Build();
@@ -390,14 +392,10 @@ public partial class App : Application
     {
         try 
         {
-            // 1. 创建 Windows App SDK 的 ResourceManager 实例
             var resourceManager = new Microsoft.Windows.ApplicationModel.Resources.ResourceManager();
 
-            // 2. 获取主资源映射 (MainResourceMap)
             var resourceMap = resourceManager.MainResourceMap;
 
-            // 3. 获取特定的资源子树 (通常是 "Resources/" 或直接在根目录下)
-            // 如果你的资源在 Resources.resw 中，通常直接用 GetValue 获取
             var resourceCandidate = resourceMap.GetValue("AppDisplayName");
     
             if (resourceCandidate != null)

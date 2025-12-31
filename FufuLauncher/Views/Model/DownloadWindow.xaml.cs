@@ -28,7 +28,7 @@ namespace FufuLauncher.Views
             var appWindow = AppWindow.GetFromWindowId(windowId);
             if (appWindow != null)
             {
-                appWindow.Resize(new Windows.Graphics.SizeInt32(900, 700)); // 设定宽高
+                appWindow.Resize(new Windows.Graphics.SizeInt32(900, 700));
             }
 
             this.Closed += (s, e) => { if (_isDownloading) _cts?.Cancel(); };

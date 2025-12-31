@@ -388,7 +388,7 @@ namespace FufuLauncher.ViewModels
                     var dialog = new ContentDialog
                     {
                         Title = title,
-                        Content = "修改此设置需要重启应用才能生效。",
+                        Content = "是否需要重启？",
                         PrimaryButtonText = "立即重启",
                         CloseButtonText = "稍后",
                         DefaultButton = ContentDialogButton.Primary,

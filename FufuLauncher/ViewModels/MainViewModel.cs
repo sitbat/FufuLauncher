@@ -11,7 +11,6 @@ using FufuLauncher.Services;
 using FufuLauncher.Services.Background;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Windows.Media.Playback;
 using Windows.UI;
