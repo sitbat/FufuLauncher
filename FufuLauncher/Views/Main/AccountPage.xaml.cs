@@ -38,4 +38,13 @@ public sealed partial class AccountPage : Page
             ViewModel.SwitchAccountCommand.Execute(account);
         }
     }
+    
+    private async void OnGachaAnalysisClicked(object sender, RoutedEventArgs e)
+    {
+        var dialog = new GachaDialog();
+        
+        dialog.XamlRoot = this.XamlRoot; 
+
+        await dialog.ShowAsync();
+    }
 }

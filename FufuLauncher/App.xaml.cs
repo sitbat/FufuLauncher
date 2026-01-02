@@ -122,6 +122,8 @@ public partial class App : Application
                 services.AddTransient<CalculatorPage>();
                 services.AddTransient<PluginViewModel>();
                 services.AddTransient<PluginPage>();
+                services.AddTransient<GachaViewModel>();
+                services.AddSingleton<GachaService>();
                 services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));
             })
             .Build();
@@ -155,7 +157,7 @@ public partial class App : Application
             var startInfo = new ProcessStartInfo
             {
                 FileName = updaterPath,
-                Arguments = "1.0.4",
+                Arguments = "1.0.5",
                 UseShellExecute = true,
                 Verb = "runas",
                 WorkingDirectory = Path.GetDirectoryName(updaterPath)

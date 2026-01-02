@@ -39,11 +39,13 @@ public partial class AccountViewModel : ObservableRecipient
     public IRelayCommand OpenGenshinDataCommand { get; }
     public IRelayCommand AddAccountCommand { get; }
     public IRelayCommand<AccountInfo> SwitchAccountCommand { get; }
+    private readonly INavigationService _navigationService;
 
     public AccountViewModel(
         ILocalSettingsService localSettingsService,
         IUserInfoService userInfoService,
-        IUserConfigService userConfigService)
+        IUserConfigService userConfigService,
+        INavigationService navigationService)
     {
         _userInfoService = userInfoService;
         _userConfigService = userConfigService;
@@ -54,9 +56,18 @@ public partial class AccountViewModel : ObservableRecipient
         OpenGenshinDataCommand = new AsyncRelayCommand(OpenGenshinDataAsync);
         AddAccountCommand = new AsyncRelayCommand(AddNewAccountAsync);
         SwitchAccountCommand = new AsyncRelayCommand<AccountInfo>(SwitchToAccountAsync);
+        _navigationService = navigationService;
 
         _ = LoadAccountInfo();
     }
+
+    [RelayCommand]
+    private void NavigateToGacha()
+    {
+
+        _navigationService.NavigateTo(typeof(GachaViewModel).FullName!);
+    }
+    
 
     private async Task OpenGenshinDataAsync()
     {
@@ -85,7 +96,6 @@ public partial class AccountViewModel : ObservableRecipient
         {
             Debug.WriteLine("========== 加载账户信息 ==========");
             var displayConfig = await _userConfigService.LoadDisplayConfigAsync();
-
             if (!string.IsNullOrEmpty(displayConfig.GameUid))
             {
                 CurrentAccount = new AccountInfo
@@ -94,7 +104,10 @@ public partial class AccountViewModel : ObservableRecipient
                     GameUid = displayConfig.GameUid,
                     Server = displayConfig.Server,
                     AvatarUrl = displayConfig.AvatarUrl,
-                    Level = displayConfig.Level
+                    Level = displayConfig.Level,
+                    Sign = displayConfig.Sign,
+                    IpRegion = displayConfig.IpRegion,
+                    Gender = displayConfig.Gender
                 };
                 LoginButtonText = "重新登录";
                 StatusMessage = "账户已登录";
@@ -141,6 +154,9 @@ public partial class AccountViewModel : ObservableRecipient
                         accountInfo.AvatarUrl = displayConfig.AvatarUrl;
                         accountInfo.Server = displayConfig.Server;
                         accountInfo.Level = displayConfig.Level;
+                        accountInfo.Sign = displayConfig.Sign;
+                        accountInfo.IpRegion = displayConfig.IpRegion;
+                        accountInfo.Gender = displayConfig.Gender;
                     }
                 }
                 catch { }
@@ -322,13 +338,18 @@ public partial class AccountViewModel : ObservableRecipient
 
             if (GameRolesInfo?.data?.list?.FirstOrDefault() is { } role)
             {
+                var userInfo = UserFullInfo?.data?.user_info;
+
                 var displayConfig = new UserDisplayConfig
                 {
                     Nickname = role.nickname,
                     GameUid = role.game_uid,
                     Server = role.region_name,
-                    AvatarUrl = UserFullInfo?.data?.user_info?.avatar_url ?? "ms-appx:///Assets/DefaultAvatar.png",
-                    Level = role.level.ToString()
+                    AvatarUrl = userInfo?.avatar_url ?? "ms-appx:///Assets/DefaultAvatar.png",
+                    Level = role.level.ToString(),
+                    Sign = string.IsNullOrEmpty(userInfo?.introduce) ? "这个人很懒，什么都没有写..." : userInfo.introduce,
+                    IpRegion = userInfo?.ip_region ?? "未知",
+                    Gender = userInfo?.gender ?? 0
                 };
 
                 await _userConfigService.SaveDisplayConfigAsync(displayConfig);
