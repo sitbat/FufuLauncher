@@ -103,7 +103,6 @@ jobs:
         $zipFileName = "FufuLauncher_Release.zip"
         Compress-Archive -Path $sourceDir -DestinationPath $zipFileName -Force
         Write-Host "Successfully created zip package: $zipFileName"
-        - name: Upload ZIP package artifact
         
     - name: Upload ZIP package artifact
       uses: actions/upload-artifact@v4
