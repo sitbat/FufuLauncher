@@ -447,64 +447,27 @@ namespace FufuLauncher.Services
         {
             try
             {
+                await Task.Delay(5000);
+
                 var enabled = await _localSettingsService.ReadSettingAsync("IsBetterGIIntegrationEnabled");
                 if (enabled != null && Convert.ToBoolean(enabled))
                 {
-                    string processDir = null;
-                    try
-                    {
-                        processDir = Path.GetDirectoryName(Process.GetCurrentProcess().MainModule?.FileName);
-                    }
-                    catch { /* ignore */ }
+                    Debug.WriteLine("[BetterGI] 配置已启用，准备通过URL Scheme启动 bettergi://start");
 
-                    var candidates = new[]
+                    var startInfo = new ProcessStartInfo
                     {
-                        Path.Combine(AppContext.BaseDirectory, "BetterGI.exe"),
-                        Path.Combine(AppContext.BaseDirectory, "Assets", "BetterGI.exe"),
-                        Path.Combine(AppContext.BaseDirectory, "BetterGI.lnk"),
-                        Path.Combine(AppContext.BaseDirectory, "Assets", "BetterGI.lnk"),
-                        processDir == null ? null : Path.Combine(processDir, "BetterGI.exe"),
-                        processDir == null ? null : Path.Combine(processDir, "Assets", "BetterGI.exe"),
-                        processDir == null ? null : Path.Combine(processDir, "BetterGI.lnk"),
-                        processDir == null ? null : Path.Combine(processDir, "Assets", "BetterGI.lnk")
+                        FileName = "bettergi://start",
+                        UseShellExecute = true,
+                        CreateNoWindow = true
                     };
 
-                    string found = null;
-                    foreach (var c in candidates)
-                    {
-                        if (string.IsNullOrEmpty(c)) continue;
-                        if (File.Exists(c))
-                        {
-                            found = c;
-                            break;
-                        }
-                    }
-
-                    Debug.WriteLine($"[BetterGI] 尝试启动，候选路径: {string.Join(", ", candidates.Where(p => !string.IsNullOrEmpty(p)))}");
-
-                    if (!string.IsNullOrEmpty(found))
-                    {
-                        Debug.WriteLine($"[BetterGI] 找到: {found}");
-
-                        var startInfo = new ProcessStartInfo
-                        {
-                            FileName = found,
-                            UseShellExecute = true,
-                            WorkingDirectory = Path.GetDirectoryName(found)
-                        };
-
-                        Process.Start(startInfo);
-                        Debug.WriteLine("[BetterGI] 启动成功");
-                    }
-                    else
-                    {
-                        Debug.WriteLine("[BetterGI] 未找到可用的 BetterGI 可执行或快捷方式");
-                    }
+                    Process.Start(startInfo);
+                    Debug.WriteLine("[BetterGI] 通过URL Scheme启动指令已发送成功");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[BetterGI] 启动失败: {ex.Message}");
+                Debug.WriteLine($"[BetterGI] 通过URL Scheme启动失败: {ex.Message}");
             }
         }
 
