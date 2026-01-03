@@ -50,7 +50,7 @@ jobs:
 
     strategy:
       matrix:
-        configuration: [Debug, Release]
+        configuration: [Release]
 
     runs-on: windows-latest  # For a list of available runner types, refer to
                              # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
@@ -99,7 +99,7 @@ jobs:
 
     - name: Pack build artifacts to ZIP file
       run: |
-        $sourceDir = "FufuLauncher/bin/Release/"
+        $sourceDir = "FufuLauncher/bin/x64/Release/net8.0-windows10.0.26100.0/win-x64/"
         $zipFileName = "FufuLauncher_Release.zip"
         Compress-Archive -Path $sourceDir -DestinationPath $zipFileName -Force
         Write-Host "Successfully created zip package: $zipFileName"
@@ -114,4 +114,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: FufuLauncher_Release_Files
-        path: FufuLauncher/bin/x64/Release/
+        path: FufuLauncher/bin/x64/Release/net8.0-windows10.0.26100.0/win-x64/
