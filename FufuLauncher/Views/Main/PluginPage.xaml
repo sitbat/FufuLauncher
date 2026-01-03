@@ -42,37 +42,76 @@
             
             <ListView.ItemTemplate>
                 <DataTemplate x:DataType="models:PluginItem">
-                    <Grid Height="60" Padding="12,8" CornerRadius="4" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}">
+                    <Grid Height="Auto" Padding="12,12" CornerRadius="4" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" Margin="0,0,0,8">
                         <Grid.ContextFlyout>
                             <MenuFlyout>
-                                <MenuFlyoutItem Text="重命名" Click="OnRenameClick" Tag="{x:Bind}"/>
+                                <MenuFlyoutItem Text="重命名文件夹" Click="OnRenameClick" Tag="{x:Bind}"/>
                                 <MenuFlyoutItem Text="删除" Click="OnDeleteClick" Icon="Delete" Tag="{x:Bind}"/>
                             </MenuFlyout>
                         </Grid.ContextFlyout>
                         
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/> <ColumnDefinition Width="*"/>    <ColumnDefinition Width="Auto"/> <ColumnDefinition Width="Auto"/> </Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/> 
+                            <ColumnDefinition Width="*"/>    
+                            <ColumnDefinition Width="Auto"/> 
+                            <ColumnDefinition Width="Auto"/> 
+                            <ColumnDefinition Width="Auto"/> 
+                        </Grid.ColumnDefinitions>
 
                         <FontIcon Glyph="&#xE74C;" FontFamily="Segoe MDL2 Assets" FontSize="24" 
-                                  Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" Margin="0,0,16,0"/>
+                                  Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                                  Margin="0,0,16,0" VerticalAlignment="Center"/>
 
-                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                            <TextBlock Text="{x:Bind FileName, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                            <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                            
+                            <TextBlock Text="{x:Bind Description, Mode=OneWay}" 
+                                       Visibility="{x:Bind DescriptionVisibility, Mode=OneWay}"
+                                       Style="{StaticResource CaptionTextBlockStyle}" 
+                                       Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
+                                       TextWrapping="Wrap"
+                                       TextTrimming="CharacterEllipsis"
+                                       MaxLines="2"
+                                       Margin="0,0,8,4"/>
+
                             <StackPanel Orientation="Horizontal" Spacing="8">
+                                
+                                <StackPanel Orientation="Horizontal" Spacing="8" Visibility="{x:Bind DeveloperVisibility, Mode=OneWay}">
+                                    <TextBlock Text="{x:Bind Developer, Mode=OneWay}" 
+                                               Style="{StaticResource CaptionTextBlockStyle}" 
+                                               Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}"
+                                               MaxWidth="120" 
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTipService.ToolTip="{x:Bind Developer, Mode=OneWay}"/>
+                                    <TextBlock Text="|" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
+                                </StackPanel>
+
                                 <TextBlock Text="{x:Bind FileSizeDisplay, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                                 <TextBlock Text="|" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                                 <TextBlock Text="{x:Bind DateModified, Mode=OneWay}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                             </StackPanel>
                         </StackPanel>
 
-                        <TextBlock Grid.Column="2" 
+                        <Button Grid.Column="2" 
+                                Click="OnConfigClick"
+                                Tag="{x:Bind}"
+                                Visibility="{x:Bind ConfigVisibility, Mode=OneWay}"
+                                Background="Transparent" 
+                                BorderThickness="0"
+                                Margin="0,0,8,0"
+                                VerticalAlignment="Center"
+                                ToolTipService.ToolTip="编辑配置文件">
+                            <FontIcon Glyph="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="16"/>
+                        </Button>
+
+                        <TextBlock Grid.Column="3" 
                                    Text="{x:Bind StatusText, Mode=OneWay}" 
                                    Foreground="{x:Bind StatusColor, Mode=OneWay}"
                                    VerticalAlignment="Center" 
                                    Margin="0,0,16,0"
                                    Style="{StaticResource CaptionTextBlockStyle}"/>
 
-                        <ToggleSwitch Grid.Column="3" 
+                        <ToggleSwitch Grid.Column="4" 
                                       IsOn="{x:Bind IsEnabled, Mode=OneWay}" 
                                       Toggled="OnPluginToggled"
                                       Tag="{x:Bind}"
@@ -89,6 +128,7 @@
                    HorizontalAlignment="Center" VerticalAlignment="Center"
                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"
                    Visibility="{x:Bind ViewModel.IsEmpty, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+        
         <StackPanel Grid.Row="3" 
                     Orientation="Horizontal" 
                     HorizontalAlignment="Center" 
@@ -96,8 +136,7 @@
                     Spacing="8" 
                     Margin="0,12,0,0">
             
-            <FontIcon Glyph="&#xE7BA;" 
-                      FontFamily="Segoe MDL2 Assets" 
+            <FontIcon Glyph="&#xE7BA;" FontFamily="Segoe MDL2 Assets" 
                       Foreground="{ThemeResource SystemFillColorCautionBrush}"
                       FontSize="14"/>
             

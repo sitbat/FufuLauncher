@@ -75,6 +75,49 @@ public class PluginViewModel : INotifyPropertyChanged
     {
         IsEmpty = Plugins == null || Plugins.Count == 0;
     }
+    
+    private (string? Name, string? Developer, string? Description) GetPluginInfoFromConfig(string? configPath)
+    {
+        if (string.IsNullOrEmpty(configPath) || !File.Exists(configPath)) return (null, null, null);
+
+        string? name = null;
+        string? dev = null;
+        string? desc = null;
+
+        try
+        {
+            var lines = File.ReadAllLines(configPath);
+            bool inGeneralSection = false;
+
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed)) continue;
+
+                if (trimmed.StartsWith("[") && trimmed.EndsWith("]"))
+                {
+                    inGeneralSection = trimmed.Equals("[General]", StringComparison.OrdinalIgnoreCase);
+                    continue;
+                }
+
+                if (inGeneralSection)
+                {
+                    var parts = trimmed.Split('=', 2);
+                    if (parts.Length == 2)
+                    {
+                        var key = parts[0].Trim();
+                        var val = parts[1].Trim();
+
+                        if (key.Equals("Name", StringComparison.OrdinalIgnoreCase)) name = val;
+                        else if (key.Equals("Developer", StringComparison.OrdinalIgnoreCase)) dev = val;
+                        else if (key.Equals("Description", StringComparison.OrdinalIgnoreCase)) desc = val;
+                    }
+                }
+            }
+        }
+        catch { }
+        return (name, dev, desc);
+    }
 
     public void LoadPlugins()
     {
@@ -84,23 +127,46 @@ public class PluginViewModel : INotifyPropertyChanged
             EnsureDirectoryExists();
             Plugins.Clear();
 
-            var directoryInfo = new DirectoryInfo(_pluginsPath);
+            var rootDir = new DirectoryInfo(_pluginsPath);
+            var subDirs = rootDir.GetDirectories();
 
-            var allFiles = directoryInfo.GetFiles("*.*")
-                .Where(f => f.Name.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
-                            f.Name.EndsWith(".dll.disabled", StringComparison.OrdinalIgnoreCase));
-
-            foreach (var file in allFiles)
+            foreach (var dir in subDirs)
             {
-                var isEnabled = !file.Name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase);
+                var dllFile = dir.GetFiles("*.dll").FirstOrDefault();
+                var disabledFile = dir.GetFiles("*.dll.disabled").FirstOrDefault();
+
+                FileInfo targetFile = dllFile ?? disabledFile;
+                if (targetFile == null) continue;
+
+                bool isEnabled = dllFile != null;
+                
+                var iniFile = dir.GetFiles("config.ini").FirstOrDefault() 
+                              ?? dir.GetFiles("*.ini").FirstOrDefault();
+                
+                string displayName = targetFile.Name;
+                string developer = "";
+                string description = "";
+
+                if (iniFile != null)
+                {
+                    var info = GetPluginInfoFromConfig(iniFile.FullName);
+                    if (!string.IsNullOrEmpty(info.Name)) displayName = info.Name;
+                    if (!string.IsNullOrEmpty(info.Developer)) developer = info.Developer;
+                    if (!string.IsNullOrEmpty(info.Description)) description = info.Description;
+                }
 
                 Plugins.Add(new PluginItem
                 {
-                    FileName = file.Name,
-                    FullPath = file.FullName,
+                    FileName = targetFile.Name,
+                    DisplayName = displayName,
+                    Developer = developer,
+                    Description = description,
+                    FullPath = targetFile.FullName,
+                    DirectoryPath = dir.FullName,
+                    ConfigFilePath = iniFile?.FullName,
                     IsEnabled = isEnabled,
-                    FileSize = file.Length,
-                    DateModified = file.LastWriteTime
+                    FileSize = targetFile.Length,
+                    DateModified = targetFile.LastWriteTime
                 });
             }
             StatusMessage = $"加载完成，共 {Plugins.Count} 个插件";
@@ -117,12 +183,32 @@ public class PluginViewModel : INotifyPropertyChanged
         }
     }
 
+    public async Task SaveConfigAsync(PluginItem item, string content)
+    {
+        if (item == null || string.IsNullOrEmpty(item.ConfigFilePath)) return;
+        try
+        {
+            await File.WriteAllTextAsync(item.ConfigFilePath, content);
+            
+            var info = GetPluginInfoFromConfig(item.ConfigFilePath);
+            if (!string.IsNullOrEmpty(info.Name)) item.DisplayName = info.Name;
+            
+            item.Developer = info.Developer ?? "";
+            item.Description = info.Description ?? "";
+
+            StatusMessage = "配置已保存";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"保存配置失败: {ex.Message}";
+        }
+    }
+
     private async void AddPluginAsync()
     {
         try
         {
             var picker = new FileOpenPicker();
-
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
             WinRT.Interop.InitializeWithWindow.Initialize(picker, hwnd);
 
@@ -134,10 +220,19 @@ public class PluginViewModel : INotifyPropertyChanged
             if (file != null)
             {
                 EnsureDirectoryExists();
-                var destPath = Path.Combine(_pluginsPath, file.Name);
+                
+                var folderName = Path.GetFileNameWithoutExtension(file.Name);
+                var destFolderPath = Path.Combine(_pluginsPath, folderName);
+                
+                if (!Directory.Exists(destFolderPath))
+                {
+                    Directory.CreateDirectory(destFolderPath);
+                }
 
+                var destPath = Path.Combine(destFolderPath, file.Name);
                 File.Copy(file.Path, destPath, true);
-                StatusMessage = $"已添加插件: {file.Name}";
+                
+                StatusMessage = $"已添加插件: {folderName}";
                 LoadPlugins();
             }
         }
@@ -184,7 +279,7 @@ public class PluginViewModel : INotifyPropertyChanged
             item.FileName = Path.GetFileName(newPath);
             item.IsEnabled = targetState;
 
-            StatusMessage = $"已{(targetState ? "启用" : "禁用")}: {item.FileName}";
+            StatusMessage = $"已{(targetState ? "启用" : "禁用")}: {item.DisplayName}";
         }
         catch (Exception ex)
         {
@@ -198,12 +293,12 @@ public class PluginViewModel : INotifyPropertyChanged
         if (item == null) return;
         try
         {
-            if (File.Exists(item.FullPath))
+            if (Directory.Exists(item.DirectoryPath))
             {
-                File.Delete(item.FullPath);
+                Directory.Delete(item.DirectoryPath, true);
                 Plugins.Remove(item);
                 UpdateIsEmpty();
-                StatusMessage = $"已删除: {item.FileName}";
+                StatusMessage = $"已删除插件: {item.DisplayName}";
             }
         }
         catch (Exception ex)
@@ -212,40 +307,35 @@ public class PluginViewModel : INotifyPropertyChanged
         }
     }
     
-    public void PerformRename(PluginItem item, string newNameWithoutExtension)
+    public void PerformRename(PluginItem item, string newName)
     {
         try
         {
-            string currentExtension;
-            if (item.FullPath.EndsWith(".dll.disabled", StringComparison.OrdinalIgnoreCase))
+            var oldDir = item.DirectoryPath;
+            var parentDir = Directory.GetParent(oldDir)?.FullName;
+            if (parentDir == null) return;
+
+            var newDir = Path.Combine(parentDir, newName);
+
+            if (string.Equals(oldDir, newDir, StringComparison.OrdinalIgnoreCase)) return;
+
+            if (Directory.Exists(newDir))
             {
-                currentExtension = ".dll.disabled";
-            }
-            else if (item.FullPath.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-            {
-                currentExtension = ".dll";
-            }
-            else
-            {
-                StatusMessage = "无法重命名：未知的文件后缀";
+                StatusMessage = "重命名失败：文件夹名已存在";
                 return;
             }
             
-            var newFileName = newNameWithoutExtension + currentExtension;
-            var newPath = Path.Combine(_pluginsPath, newFileName);
+            Directory.Move(oldDir, newDir);
+            
+            item.DirectoryPath = newDir;
+            var fileName = Path.GetFileName(item.FullPath);
+            item.FullPath = Path.Combine(newDir, fileName);
 
-            if (string.Equals(item.FullPath, newPath, StringComparison.OrdinalIgnoreCase)) return;
-
-            if (File.Exists(newPath))
+            if (item.HasConfig)
             {
-                StatusMessage = "重命名失败：文件名已存在";
-                return;
+                var configName = Path.GetFileName(item.ConfigFilePath);
+                item.ConfigFilePath = Path.Combine(newDir, configName);
             }
-            
-            File.Move(item.FullPath, newPath);
-            
-            item.FileName = newFileName;
-            item.FullPath = newPath;
             
             StatusMessage = $"重命名成功";
         }
@@ -261,11 +351,11 @@ public class PluginViewModel : INotifyPropertyChanged
 
         var sorted = sortType switch
         {
-            "Name" => Plugins.OrderBy(x => x.FileName),
+            "Name" => Plugins.OrderBy(x => x.DisplayName),
             "Size" => Plugins.OrderByDescending(x => x.FileSize),
             "Date" => Plugins.OrderByDescending(x => x.DateModified),
             "Status" => Plugins.OrderByDescending(x => x.IsEnabled),
-            _ => Plugins.OrderBy(x => x.FileName)
+            _ => Plugins.OrderBy(x => x.DisplayName)
         };
 
         var list = sorted.ToList();
