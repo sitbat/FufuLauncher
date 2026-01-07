@@ -23,40 +23,6 @@
             <ColumnDefinition Width="350"/>
         </Grid.ColumnDefinitions>
 
-        <StackPanel Grid.Column="0" Spacing="30" VerticalAlignment="Top">
-            
-            <TextBlock Text="游戏控制面板" 
-                       FontSize="28" 
-                       FontWeight="Bold" />
-
-            <StackPanel Orientation="Vertical" Spacing="10">
-                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1" 
-                        CornerRadius="8" 
-                        Padding="20">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0" Spacing="4">
-                            <TextBlock Text="启用注入" FontSize="16" FontWeight="SemiBold"/>
-                            <TextBlock Text="启动游戏时自动加载插件" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                        </StackPanel>
-                        
-                        <ToggleSwitch Grid.Column="1" 
-                                      IsOn="{x:Bind MainViewModel.UseInjection, Mode=TwoWay}" 
-                                      IsEnabled="{x:Bind ViewModel.IsGameRunning, Converter={StaticResource BoolInverter}, Mode=OneWay}"/>
-                    </Grid>
-                </Border>
-            </StackPanel>
-
-            <StackPanel Orientation="Vertical" Spacing="10">
-                <TextBlock Text="使用本软件产生的任何后果（包括但不限于账号封禁、数据丢失等）均由用户自行承担" FontSize="16" FontWeight="SemiBold" Foreground="OrangeRed"/>
-            </StackPanel>
-        </StackPanel>
-
         <Border Grid.Column="1" 
                 Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                 BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"

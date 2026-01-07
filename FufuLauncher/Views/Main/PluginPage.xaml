@@ -6,7 +6,12 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:models="using:FufuLauncher.Models"
     xmlns:viewModels="using:FufuLauncher.ViewModels"
+    xmlns:converters="using:FufuLauncher.Converters"
     mc:Ignorable="d">
+    
+    <Page.Resources>
+        <converters:BoolInverter x:Key="BoolInverter"/>
+    </Page.Resources>
 
     <Grid Padding="24">
         <Grid.RowDefinitions>
@@ -16,7 +21,28 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Text="插件管理" Style="{StaticResource TitleTextBlockStyle}" Margin="0,0,0,16"/>
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/> <ColumnDefinition Width="*"/>    <ColumnDefinition Width="Auto"/> </Grid.ColumnDefinitions>
+
+            <TextBlock Grid.Column="0" 
+                       Text="插件管理" 
+                       Style="{StaticResource TitleTextBlockStyle}" 
+                       VerticalAlignment="Center"/>
+
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="启用注入" FontWeight="SemiBold" HorizontalAlignment="Right"/>
+                    <TextBlock Text="启动游戏时加载插件" FontSize="11" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Right"/>
+                </StackPanel>
+                
+                <ToggleSwitch IsOn="{x:Bind MainViewModel.UseInjection, Mode=TwoWay}" 
+                              IsEnabled="{x:Bind ControlPanelViewModel.IsGameRunning, Converter={StaticResource BoolInverter}, Mode=OneWay}"
+                              OnContent="" OffContent="" 
+                              MinWidth="0"
+                              VerticalAlignment="Center"/>
+            </StackPanel>
+        </Grid>
 
         <CommandBar Grid.Row="1" DefaultLabelPosition="Right" Background="Transparent" IsOpen="False">
             <AppBarButton Icon="Add" Label="添加插件" Command="{x:Bind ViewModel.AddPluginCommand}"/>

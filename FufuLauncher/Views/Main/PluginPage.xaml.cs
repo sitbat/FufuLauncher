@@ -10,12 +10,22 @@ namespace FufuLauncher.Views;
 public sealed partial class PluginPage : Page
 {
     public PluginViewModel ViewModel { get; }
+    
+    // 新增：用于绑定注入开关
+    public MainViewModel MainViewModel { get; }
+    // 新增：用于判断游戏是否运行（运行时禁用开关）
+    public ControlPanelModel ControlPanelViewModel { get; }
 
     public PluginPage()
     {
         ViewModel = App.GetService<PluginViewModel>();
+        // 获取另外两个 ViewModel 实例
+        MainViewModel = App.GetService<MainViewModel>();
+        ControlPanelViewModel = App.GetService<ControlPanelModel>();
+        
         this.InitializeComponent();
     }
+    
     private class ConfigOption
     {
         public string SectionHeader { get; set; }
