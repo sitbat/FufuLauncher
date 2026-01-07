@@ -548,51 +548,32 @@
                 </Border>
                 
                 <Border x:Name="AboutItem" Style="{StaticResource SettingsCardStyle}">
-                    <StackPanel>
-                        <TextBlock Text="关于" 
-                                   Style="{ThemeResource SubtitleTextBlockStyle}"
-                                   Margin="0,0,0,16"/>
-                        
-                        <StackPanel Spacing="4">
-                            <HyperlinkButton Margin="-12,0,0,0" 
-                                             NavigateUri="https://github.com/CodeCubist/FufuLauncher">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock VerticalAlignment="Center" 
-                                               FontFamily="ms-appx:///Assets/Fonts/icomoon.ttf#icomoon" 
-                                               FontSize="18" 
-                                               Text="&#xe900;"/>
-                                    <TextBlock VerticalAlignment="Center" 
-                                               Text="芙芙启动器 1.0.5.0"
-                                               Style="{ThemeResource BodyTextBlockStyle}"/>
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="关于" Style="{ThemeResource BodyStrongTextBlockStyle}"/>
+    
+                        <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" 
+                                BorderThickness="1" 
+                                CornerRadius="4" 
+                                Padding="16">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+            
+                                <StackPanel Spacing="4">
+                                    <TextBlock Text="FufuLauncher" Style="{ThemeResource BodyTextBlockStyle}"/>
+                                    <TextBlock Text="版本 1.0.6.0" 
+                                               Style="{ThemeResource CaptionTextBlockStyle}" 
+                                               Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                                 </StackPanel>
-                            </HyperlinkButton>
-                            
-                            <HyperlinkButton Margin="-12,0,0,0" 
-                                             NavigateUri="https://github.com/CodeCubist">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock VerticalAlignment="Center" 
-                                               FontFamily="ms-appx:///Assets/Fonts/icomoon.ttf#icomoon" 
-                                               FontSize="18" 
-                                               Text="&#xe901;"/>
-                                    <TextBlock VerticalAlignment="Center" 
-                                               Text="CodeCubist"
-                                               Style="{ThemeResource BodyTextBlockStyle}"/>
-                                </StackPanel>
-                            </HyperlinkButton>
 
-                            <HyperlinkButton Margin="-12,0,0,0" 
-                                             NavigateUri="https://github.com/MarlonPullan6">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <TextBlock VerticalAlignment="Center" 
-                                               FontFamily="ms-appx:///Assets/Fonts/icomoon.ttf#icomoon" 
-                                               FontSize="18" 
-                                               Text="&#xe901;"/>
-                                    <TextBlock VerticalAlignment="Center" 
-                                               Text="MIANKRAM"
-                                               Style="{ThemeResource BodyTextBlockStyle}"/>
-                                </StackPanel>
-                            </HyperlinkButton>
-                        </StackPanel>
+                                <Button Grid.Column="1" 
+                                        Content="关于我们" 
+                                        Click="OnOpenAboutWindowClick"/>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
             </StackPanel>

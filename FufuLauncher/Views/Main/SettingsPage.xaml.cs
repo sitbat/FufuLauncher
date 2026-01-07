@@ -1,6 +1,9 @@
 ﻿using FufuLauncher.ViewModels;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using WinRT.Interop;
 
 namespace FufuLauncher.Views;
 
@@ -26,6 +29,49 @@ public sealed partial class SettingsPage : Page
         {
             await ViewModel.ReloadSettingsAsync();
         }
+    }
+    
+    private void OnOpenAboutWindowClick(object sender, RoutedEventArgs e)
+    {
+        var window = new Window();
+        var page = new AboutPage();
+        window.Content = page;
+        
+        window.ExtendsContentIntoTitleBar = true;
+        window.SetTitleBar(page.AppTitleBar);
+    
+        window.Title = "关于 FufuLauncher";
+        
+        try { window.SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop(); } catch { }
+
+        IntPtr hWnd = WindowNative.GetWindowHandle(window);
+        WindowId windowId = Win32Interop.GetWindowIdFromWindow(hWnd);
+        AppWindow appWindow = AppWindow.GetFromWindowId(windowId);
+
+        if (appWindow != null)
+        {
+            appWindow.SetIcon("Assets/WindowIcon.ico");
+            
+            var size = new Windows.Graphics.SizeInt32(1000, 650);
+            appWindow.Resize(size);
+
+            var displayArea = DisplayArea.GetFromWindowId(windowId, DisplayAreaFallback.Primary);
+            if (displayArea != null)
+            {
+                var centeredX = (displayArea.WorkArea.Width - size.Width) / 2;
+                var centeredY = (displayArea.WorkArea.Height - size.Height) / 2;
+                appWindow.Move(new Windows.Graphics.PointInt32(centeredX, centeredY));
+            }
+        
+            var presenter = appWindow.Presenter as OverlappedPresenter;
+            if (presenter != null)
+            {
+                presenter.IsMaximizable = false;
+                presenter.IsResizable = false;
+            }
+        }
+
+        window.Activate();
     }
 
     private void SettingsNavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
