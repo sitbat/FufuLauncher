@@ -1,7 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -12,22 +9,21 @@ namespace FufuLauncher.ViewModels;
 
 public partial class ControlPanelModel : ObservableObject
 {
-    private const string ServerIp = "127.0.0.1";
-    private const int ServerPort = 12345;
     private const string TargetProcessName = "yuanshen";
     private const string TargetProcessNameAlt = "GenshinImpact";
     
+<<<<<<< HEAD
     private const string HotSwitchDllName = "input_hot_switch.dll";
     private const string HotSwitchDllDisabledName = "input_hot_switch.dll.disabled";
     private readonly string _baseDirectory;
     
     private UdpClient? _udpClient;
     private IPEndPoint? _remoteEndPoint;
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
     private readonly string _configPath;
     private bool _isLoaded;
     private CancellationTokenSource _cancellationTokenSource;
-    private readonly SemaphoreSlim _socketLock = new(1, 1);
-    private bool _isConnected;
 
     private DateTime? _gameStartTime;
     private readonly Dictionary<string, long> _playTimeData;
@@ -38,6 +34,7 @@ public partial class ControlPanelModel : ObservableObject
     [ObservableProperty]
     private bool _isGameRunning;
 
+<<<<<<< HEAD
     [ObservableProperty]
     private string _connectionStatus = "请启动游戏";
     
@@ -74,6 +71,8 @@ public partial class ControlPanelModel : ObservableObject
         SaveConfig();
     }
 
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
     public ControlPanelModel()
     {
         _configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "fufu", "FufuConfig.cfg");
@@ -81,6 +80,7 @@ public partial class ControlPanelModel : ObservableObject
         _playTimeData = new Dictionary<string, long>();
         _baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
+<<<<<<< HEAD
         try
         {
             _udpClient = new UdpClient();
@@ -105,11 +105,14 @@ public partial class ControlPanelModel : ObservableObject
         }
 
         _ = StartConnectionLoopAsync(_cancellationTokenSource.Token);
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         LoadConfig();
-
+        
         _ = StartGameMonitoringLoopAsync(_cancellationTokenSource.Token);
     }
     
+<<<<<<< HEAD
     private void ToggleInputHotSwitchDll(bool disable)
     {
         string normalPath = Path.Combine(_baseDirectory, HotSwitchDllName);
@@ -329,6 +332,8 @@ public partial class ControlPanelModel : ObservableObject
         }
     }
 
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
     private (string Name, int Id)? FindTargetProcess()
     {
         var processes = Process.GetProcessesByName(TargetProcessName);
@@ -338,63 +343,6 @@ public partial class ControlPanelModel : ObservableObject
         if (processes.Length > 0) return (processes[0].ProcessName, processes[0].Id);
 
         return null;
-    }
-
-    private async Task StartConnectionLoopAsync(CancellationToken token)
-    {
-        while (!token.IsCancellationRequested)
-        {
-            try
-            {
-                bool alive = await SendAndReceiveAsync("heartbeat", token);
-
-                if (alive)
-                {
-                    if (!_isConnected)
-                    {
-                        _isConnected = true;
-                        var processInfo = FindTargetProcess();
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            if (processInfo.HasValue)
-                            {
-                                ConnectionStatus = $"已连接: {processInfo.Value.Name} [PID: {processInfo.Value.Id}]";
-                            }
-                            else
-                            {
-                                ConnectionStatus = "已连接";
-                            }
-                        });
-                        ApplyConfig();
-                    }
-                }
-                else
-                {
-                    if (_isConnected)
-                    {
-                        _isConnected = false;
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                        {
-                            ConnectionStatus = "连接断开";
-                        });
-                    }
-                    else
-                    {
-                        App.MainWindow.DispatcherQueue.TryEnqueue(() =>
-                       {
-                           ConnectionStatus = "请启动游戏";
-                       });
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[UDP] Loop Error: {ex.Message}");
-                _isConnected = false;
-            }
-
-            await Task.Delay(1000, token);
-        }
     }
 
     private async Task StartGameMonitoringLoopAsync(CancellationToken token)
@@ -493,20 +441,6 @@ public partial class ControlPanelModel : ObservableObject
         });
     }
 
-    private void ApplyConfig()
-    {
-        SendCommand(EnableFpsOverride ? "enable_fps_override" : "disable_fps_override");
-        SendCommand(EnableFpsFakeReporting ? "enable_fps_fake_reporting" : "disable_fps_fake_reporting");
-        SendCommand($"set_fps {TargetFps}");
-        
-        SendCommand(EnableFovOverride ? "enable_fov_override" : "disable_fov_override");
-        SendCommand(EnableFovCutsceneFix ? "enable_fov_cutscene_fix" : "disable_fov_cutscene_fix");
-        SendCommand($"set_fov {TargetFov}");
-        
-        SendCommand(EnableFogOverride ? "enable_display_fog_override" : "disable_display_fog_override");
-        SendCommand(EnablePerspectiveOverride ? "enable_Perspective_override" : "disable_Perspective_override");
-    }
-
     private void LoadConfig()
     {
         try
@@ -518,26 +452,7 @@ public partial class ControlPanelModel : ObservableObject
                 if (config != null)
                 {
                     _isLoaded = false;
-                    EnableFpsOverride = config.EnableFpsOverride;
-                    TargetFps = config.TargetFps;
-                    EnableFovOverride = config.EnableFovOverride;
-                    TargetFov = config.TargetFov;
-                    EnableFogOverride = config.EnableFogOverride;
-                    EnablePerspectiveOverride = config.EnablePerspectiveOverride;
-                    RemoveQuestBanner = config.RemoveQuestBanner;
-                    RemoveDamageText = config.RemoveDamageText;
-                    EnableTouchScreenMode = config.EnableTouchScreenMode;
-                    DisableEventCameraMove = config.DisableEventCameraMove;
-                    RemoveTeamProgressLimit = config.RemoveTeamProgressLimit;
-                    EnableRedirectCombineEntry = config.EnableRedirectCombineEntry;
-                    ResinListItemId000106Allowed = config.ResinListItemId000106Allowed;
-                    ResinListItemId000201Allowed = config.ResinListItemId000201Allowed;
-                    ResinListItemId107009Allowed = config.ResinListItemId107009Allowed;
-                    ResinListItemId107012Allowed = config.ResinListItemId107012Allowed;
-                    ResinListItemId220007Allowed = config.ResinListItemId220007Allowed;
-                    EnableFpsFakeReporting = config.EnableFpsFakeReporting;
-                    EnableFovCutsceneFix = config.EnableFovCutsceneFix;
-
+                    
                     if (config.GamePlayTimeData != null)
                     {
                         foreach (var kvp in config.GamePlayTimeData)
@@ -548,11 +463,6 @@ public partial class ControlPanelModel : ObservableObject
 
                     _isLoaded = true;
                     CalculateWeeklyStats();
-
-                    if (_isConnected)
-                    {
-                        ApplyConfig();
-                    }
                 }
             }
             else
@@ -574,25 +484,6 @@ public partial class ControlPanelModel : ObservableObject
         {
             var config = new ControlPanelConfig
             {
-                EnableFpsOverride = EnableFpsOverride,
-                EnableFpsFakeReporting = EnableFpsFakeReporting,
-                EnableFovCutsceneFix = EnableFovCutsceneFix,
-                TargetFps = TargetFps,
-                EnableFovOverride = EnableFovOverride,
-                TargetFov = TargetFov,
-                EnableFogOverride = EnableFogOverride,
-                EnablePerspectiveOverride = EnablePerspectiveOverride,
-                RemoveQuestBanner = RemoveQuestBanner,
-                RemoveDamageText = RemoveDamageText,
-                EnableTouchScreenMode = EnableTouchScreenMode,
-                DisableEventCameraMove = DisableEventCameraMove,
-                RemoveTeamProgressLimit = RemoveTeamProgressLimit,
-                EnableRedirectCombineEntry = EnableRedirectCombineEntry,
-                ResinListItemId000106Allowed = ResinListItemId000106Allowed,
-                ResinListItemId000201Allowed = ResinListItemId000201Allowed,
-                ResinListItemId107009Allowed = ResinListItemId107009Allowed,
-                ResinListItemId107012Allowed = ResinListItemId107012Allowed,
-                ResinListItemId220007Allowed = ResinListItemId220007Allowed,
                 GamePlayTimeData = _playTimeData,
                 LastPlayDate = DateTime.Now.ToString("yyyy-MM-dd")
             };
@@ -612,25 +503,7 @@ public partial class ControlPanelModel : ObservableObject
 
 public class ControlPanelConfig
 {
-    public bool EnableFpsOverride { get; set; }
-    public int TargetFps { get; set; }
-    public bool EnableFovOverride { get; set; }
-    public float TargetFov { get; set; }
-    public bool EnableFogOverride { get; set; }
-    public bool EnablePerspectiveOverride { get; set; }
-    public bool RemoveQuestBanner { get; set; } = true;
-    public bool RemoveDamageText { get; set; } = true;
-    public bool EnableTouchScreenMode { get; set; }
-    public bool DisableEventCameraMove { get; set; } = true;
-    public bool RemoveTeamProgressLimit { get; set; } = true;
-    public bool EnableRedirectCombineEntry { get; set; }
-    public bool ResinListItemId000106Allowed { get; set; }
-    public bool ResinListItemId000201Allowed { get; set; }
-    public bool ResinListItemId107009Allowed { get; set; }
-    public bool ResinListItemId107012Allowed { get; set; }
-    public bool ResinListItemId220007Allowed { get; set; }
     public Dictionary<string, long> GamePlayTimeData { get; set; }
     public string LastPlayDate { get; set; }
-    public bool EnableFovCutsceneFix { get; set; }
-    public bool EnableFpsFakeReporting { get; set; }
+
 }

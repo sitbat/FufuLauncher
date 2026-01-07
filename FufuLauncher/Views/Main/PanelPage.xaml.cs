@@ -1,16 +1,14 @@
 ﻿using FufuLauncher.ViewModels;
-using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+<<<<<<< HEAD
 using Microsoft.UI.Xaml.Input;
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
 
 namespace FufuLauncher.Views;
 
 public sealed partial class PanelPage
 {
-    private bool _hasConfirmedHighFps;
-    private bool _isRevertingFps;
-    private bool _isDialogOpen;
-
     public ControlPanelModel ViewModel
     {
         get;
@@ -27,13 +25,9 @@ public sealed partial class PanelPage
         MainViewModel = App.GetService<MainViewModel>();
         DataContext = ViewModel;
         
-        if (ViewModel.TargetFps > 120)
-        {
-            _hasConfirmedHighFps = true;
-        }
-
         InitializeComponent();
     }
+<<<<<<< HEAD
 
     private void ContentScrollViewer_Tapped(object sender, TappedRoutedEventArgs e)
     {
@@ -156,4 +150,6 @@ public sealed partial class PanelPage
     {
         await CheckFpsLimitAsync(args.NewValue, (val) => sender.Value = val);
     }
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
 }

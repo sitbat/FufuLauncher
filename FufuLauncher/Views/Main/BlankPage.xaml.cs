@@ -422,7 +422,11 @@ namespace FufuLauncher.Views
                 var dialog = new ContentDialog
                 {
                     Title = "国际服客户端",
+<<<<<<< HEAD
                     Content = "注意：本启动器的注入功能主要是针对国服设计的。如果在国际服客户端上使用，可能无法生效或导致错误。\n\n是否继续使用此路径？",
+=======
+                    Content = "注意：本启动器的注入功能主要是针对国服设计的。在国际服客户端上，此功能可能无法生效或导致未知的错误。\n\n是否继续使用此路径？",
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
                     PrimaryButtonText = "继续使用",
                     CloseButtonText = "放弃并清除",
                     DefaultButton = ContentDialogButton.Primary,

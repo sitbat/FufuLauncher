@@ -17,6 +17,7 @@
         <converters:BoolInverter x:Key="BoolInverter"/>
     </Page.Resources>
 
+<<<<<<< HEAD
     <Grid>
         <NavigationView
             x:Name="MainNavigationView"
@@ -46,10 +47,72 @@
                           Tapped="ContentScrollViewer_Tapped">
 
                 <Grid Padding="20">
+=======
+    <Grid Padding="40">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="350"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Spacing="30" VerticalAlignment="Top">
+            
+            <TextBlock Text="游戏控制面板" 
+                       FontSize="28" 
+                       FontWeight="Bold" />
+
+            <StackPanel Orientation="Vertical" Spacing="10">
+                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" 
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1" 
+                        CornerRadius="8" 
+                        Padding="20">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="启用注入" FontSize="16" FontWeight="SemiBold"/>
+                            <TextBlock Text="启动游戏时自动加载插件" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        </StackPanel>
+                        
+                        <ToggleSwitch Grid.Column="1" 
+                                      IsOn="{x:Bind MainViewModel.UseInjection, Mode=TwoWay}" 
+                                      IsEnabled="{x:Bind ViewModel.IsGameRunning, Converter={StaticResource BoolInverter}, Mode=OneWay}"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
+
+            <StackPanel Orientation="Vertical" Spacing="10">
+                <TextBlock Text="使用本软件产生的任何后果（包括但不限于账号封禁、数据丢失等）均由用户自行承担" FontSize="16" FontWeight="SemiBold" Foreground="OrangeRed"/>
+            </StackPanel>
+        </StackPanel>
+
+        <Border Grid.Column="1" 
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1"
+                CornerRadius="8"
+                Margin="40,0,0,0"
+                Padding="20"
+                VerticalAlignment="Top">
+            <StackPanel Spacing="15">
+                <TextBlock Text="本周游戏时长统计" 
+                           FontSize="18" 
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,5"/>
+
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="350"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
+<<<<<<< HEAD
 
                     <Grid Grid.Column="0">
                         <Grid.RowDefinitions>
@@ -332,5 +395,65 @@
                 HorizontalAlignment="Right" 
                 VerticalAlignment="Bottom"
                 Margin="0,0,20,20"/>
+=======
+
+                    <StackPanel Grid.Row="0" Grid.Column="0" Spacing="5">
+                        <TextBlock Text="总时长" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="{Binding WeeklyStats.DisplayTotalTime}" FontSize="18" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="0" Grid.Column="1" Spacing="5">
+                        <TextBlock Text="平均每日" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        <TextBlock Text="{Binding WeeklyStats.DisplayAverageTime}" FontSize="18" FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Row="1" Grid.Column="0" Spacing="5" Margin="0,15,0,0">
+                        <TextBlock Text="游戏状态" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                        <Grid>
+                            <TextBlock Text="未运行" FontSize="16" FontWeight="SemiBold" 
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Visibility="{Binding IsGameRunning, Converter={StaticResource BoolToVisibilityConverter}, ConverterParameter=True}"/>
+                            <TextBlock Text="运行中" FontSize="16" FontWeight="SemiBold" 
+                                       Foreground="#10B981"
+                                       Visibility="{Binding IsGameRunning, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                        </Grid>
+                    </StackPanel>
+                </Grid>
+
+                <Rectangle Height="1" 
+                           Fill="{ThemeResource CardStrokeColorDefaultBrush}" 
+                           Margin="0,5"/>
+
+                <TextBlock Text="每日详情" FontWeight="SemiBold" FontSize="14" Margin="0,5,0,0"/>
+                <ItemsControl ItemsSource="{Binding WeeklyStats.DailyRecords}" Margin="0,5,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="models:GamePlayTimeRecord">
+                            <Grid Margin="0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="10">
+                                    <TextBlock Text="{Binding DayOfWeek}" FontSize="14" Width="40"/>
+                                    <TextBlock Text="{Binding DisplayDate}" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+
+                                <TextBlock Grid.Column="1" Text="{Binding DisplayTime}" FontSize="14" FontWeight="SemiBold"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="本周暂无游戏记录" 
+                           FontSize="14" 
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                           HorizontalAlignment="Center"
+                           Margin="0,20"
+                           Visibility="{Binding WeeklyStats.DailyRecords.Count, Converter={StaticResource EmptyCountToVisibilityConverter}}"/>
+            </StackPanel>
+        </Border>
+
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
     </Grid>
 </Page>

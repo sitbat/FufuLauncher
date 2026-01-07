@@ -41,6 +41,13 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private Brush _panelBackgroundBrush;
         private double _panelOpacityValue = 0.5;
         
+<<<<<<< HEAD
+=======
+        [ObservableProperty] private double _infoCardHeight = 310;
+        [ObservableProperty] private string _infoExpandIcon = "\uE70E";
+        private bool _isInfoCardExpanded = true;
+
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         private BannerItem _currentBanner;
         public BannerItem CurrentBanner
         {
@@ -81,7 +88,20 @@ namespace FufuLauncher.ViewModels
         {
             get;
         }
+<<<<<<< HEAD
 
+=======
+        
+        public IRelayCommand ToggleInfoCardCommand
+        {
+            get;
+        }
+
+        public IRelayCommand ToggleBackgroundTypeCommand
+        {
+            get;
+        }
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         public IAsyncRelayCommand ExecuteCheckinCommand
         {
             get;
@@ -119,7 +139,12 @@ namespace FufuLauncher.ViewModels
             _bannerTimer.Tick += (s, e) => RotateBanner();
 
             TogglePanelCommand = new RelayCommand(() => IsPanelExpanded = !IsPanelExpanded);
+<<<<<<< HEAD
             // ToggleActivityCommand = new RelayCommand(() => IsActivityPostsExpanded = !IsActivityPostsExpanded);
+=======
+            ToggleInfoCardCommand = new RelayCommand(ToggleInfoCard);
+            ToggleBackgroundTypeCommand = new RelayCommand(ToggleBackgroundType);
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
             ExecuteCheckinCommand = new AsyncRelayCommand(ExecuteCheckinAsync);
             LaunchGameCommand = new AsyncRelayCommand(LaunchGameAsync);
             OpenScreenshotFolderCommand = new AsyncRelayCommand(OpenScreenshotFolderAsync);
@@ -134,13 +159,27 @@ namespace FufuLauncher.ViewModels
             
             WeakReferenceMessenger.Default.Register<PanelOpacityChangedMessage>(this, (r, m) =>
             {
-                
                 _dispatcherQueue.TryEnqueue(() =>
                 {
                     _panelOpacityValue = m.Value;
                     UpdatePanelBackgroundBrush();
                 });
             });
+        }
+        
+        private void ToggleInfoCard()
+        {
+            _isInfoCardExpanded = !_isInfoCardExpanded;
+            if (_isInfoCardExpanded)
+            {
+                InfoCardHeight = 310;
+                InfoExpandIcon = "\uE70E";
+            }
+            else
+            {
+                InfoCardHeight = 135;
+                InfoExpandIcon = "\uE70D";
+            }
         }
 
         public async Task InitializeAsync()
@@ -152,7 +191,6 @@ namespace FufuLauncher.ViewModels
             await LoadContentAsync();
             await LoadCheckinStatusAsync();
             UseInjection = await _gameLauncherService.GetUseInjectionAsync();
-
             
             try 
             {
@@ -170,7 +208,6 @@ namespace FufuLauncher.ViewModels
         public void SetPanelOpacity(double opacity)
         {
             _panelOpacityValue = opacity;
-            
             _dispatcherQueue.TryEnqueue(UpdatePanelBackgroundBrush);
         }
         
@@ -183,35 +220,27 @@ namespace FufuLauncher.ViewModels
         {
             try
             {
-                
                 var themeService = App.GetService<IThemeSelectorService>();
                 var currentTheme = themeService.Theme;
 
-                
                 if (currentTheme == ElementTheme.Default)
                 {
                     currentTheme = Application.Current.RequestedTheme == ApplicationTheme.Light 
                         ? ElementTheme.Light 
                         : ElementTheme.Dark;
                 }
-
                 
                 Color baseColor;
                 if (currentTheme == ElementTheme.Light)
                 {
-                    
                     baseColor = Microsoft.UI.Colors.White;
                 }
                 else
                 {
-                    
                     baseColor = Color.FromArgb(255, 32, 32, 32);
                 }
-
-                
                 
                 PanelBackgroundBrush = new SolidColorBrush(baseColor) { Opacity = _panelOpacityValue };
-                
                 Debug.WriteLine($"[MainViewModel] 背景已更新 - 主题: {currentTheme}, 透明度: {_panelOpacityValue}");
             }
             catch (Exception ex)
@@ -219,7 +248,6 @@ namespace FufuLauncher.ViewModels
                 Debug.WriteLine($"[MainViewModel] 更新背景失败: {ex.Message}");
             }
         }
-
 
         public async Task OnPageReturnedAsync()
         {
@@ -229,18 +257,31 @@ namespace FufuLauncher.ViewModels
 
         private async Task LoadUserPreferencesAsync()
         {
-        }
+<<<<<<< HEAD
+=======
+            var pref = await _localSettingsService.ReadSettingAsync("PreferVideoBackground");
+            if (pref != null)
+            {
+                PreferVideoBackground = Convert.ToBoolean(pref);
+            }
 
+            var panelOpacityJson = await _localSettingsService.ReadSettingAsync("PanelBackgroundOpacity");
+            try
+            {
+                _panelOpacityValue = panelOpacityJson != null ? Convert.ToDouble(panelOpacityJson) : 0.5;
+            }
+            catch
+            {
+                _panelOpacityValue = 0.5;
+            }
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
+        }
         
         public async Task SetPanelOpacityAsync(double opacity)
         {
             _panelOpacityValue = Math.Clamp(opacity, 0.0, 1.0);
             UpdatePanelBackgroundBrush();
-        
-            
             await _localSettingsService.SaveSettingAsync("PanelBackgroundOpacity", _panelOpacityValue);
-        
-            
             OnPropertyChanged(nameof(PanelBackgroundBrush));
         }
 
@@ -529,7 +570,6 @@ namespace FufuLauncher.ViewModels
         {
             _ = Task.Run(async () =>
             {
-
                 await _gameLauncherService.SetUseInjectionAsync(value);
                 var actual = await _gameLauncherService.GetUseInjectionAsync();
                 if (actual != value)

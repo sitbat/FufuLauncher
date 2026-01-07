@@ -49,6 +49,7 @@ public sealed partial class PluginPage : Page
         }
     }
     
+<<<<<<< HEAD
     private async void OnConfigClick(object sender, RoutedEventArgs e)
     {
         if (sender is Button btn && btn.Tag is PluginItem item && item.HasConfig)
@@ -142,6 +143,13 @@ public sealed partial class PluginPage : Page
             {
                 ViewModel.StatusMessage = $"配置文件错误: {ex.Message}";
             }
+=======
+    private void OnConfigClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is PluginItem item && item.HasConfig)
+        {
+            this.Frame.Navigate(typeof(PluginConfigPage), item);
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         }
     }
     

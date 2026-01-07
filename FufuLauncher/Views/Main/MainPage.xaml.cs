@@ -71,6 +71,38 @@ public sealed partial class MainPage : Page
         storyboard.Children.Add(animation);
         storyboard.Begin();
     }
+<<<<<<< HEAD
+=======
+    
+    private void InfoCard_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        AnimateInfoButtonOpacity(1.0);
+    }
+
+    private void InfoCard_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        AnimateInfoButtonOpacity(0.0);
+    }
+
+    private void AnimateInfoButtonOpacity(double toOpacity)
+    {
+        if (InfoExpandButton == null) return;
+
+        var storyboard = new Storyboard();
+        var animation = new DoubleAnimation
+        {
+            To = toOpacity,
+            Duration = new Duration(TimeSpan.FromMilliseconds(200)),
+            EnableDependentAnimation = true
+        };
+
+        Storyboard.SetTarget(animation, InfoExpandButton);
+        Storyboard.SetTargetProperty(animation, "Opacity");
+
+        storyboard.Children.Add(animation);
+        storyboard.Begin();
+    }
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
 
     private bool _isInitialized = false;
 

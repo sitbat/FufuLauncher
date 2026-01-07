@@ -12,6 +12,7 @@ using FufuLauncher.Messages;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using CommunityToolkit.Mvvm.Messaging.Messages;
+using Microsoft.UI.Windowing;
 
 namespace FufuLauncher.ViewModels
 {
@@ -52,8 +53,8 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private bool _minimizeToTray;
         [ObservableProperty] private string _customLaunchParameters = "";
         [ObservableProperty] private WindowModeType _launchArgsWindowMode = WindowModeType.Normal;
-        [ObservableProperty] private string _launchArgsWidth = "1920";
-        [ObservableProperty] private string _launchArgsHeight = "1080";
+        [ObservableProperty] private string _launchArgsWidth;
+        [ObservableProperty] private string _launchArgsHeight;
         [ObservableProperty] private string _launchArgsPreview = "";
         [ObservableProperty] private string _customBackgroundPath;
         [ObservableProperty] private bool _hasCustomBackground;
@@ -70,7 +71,10 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private double _contentFrameBackgroundOpacity = 0.5;
         [ObservableProperty] private bool _isSaveWindowSizeEnabled;
         [ObservableProperty] private double _globalBackgroundImageOpacity = 1.0;
+<<<<<<< HEAD
         [ObservableProperty] private bool _forceNonAdmin = true;
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
 
         public IAsyncRelayCommand OpenBackgroundCacheFolderCommand
         {
@@ -126,6 +130,9 @@ namespace FufuLauncher.ViewModels
             _navigationService = navigationService;
             _gameLauncherService = gameLauncherService;
             _filePickerService = filePickerService;
+            
+            InitializeDefaultResolution();
+
             SelectStartupSoundCommand = new AsyncRelayCommand(SelectStartupSoundAsync);
             ClearStartupSoundCommand = new AsyncRelayCommand(ClearStartupSound);
             ElementTheme = _themeSelectorService.Theme;
@@ -176,6 +183,32 @@ namespace FufuLauncher.ViewModels
             ClearCustomBackgroundCommand = new AsyncRelayCommand(ClearCustomBackground);
             OpenBackgroundCacheFolderCommand = new AsyncRelayCommand(OpenBackgroundCacheFolderAsync);
         }
+        
+        private void InitializeDefaultResolution()
+        {
+            try
+            {
+                var displayArea = DisplayArea.Primary;
+                
+                if (displayArea != null)
+                {
+                    _launchArgsWidth = displayArea.OuterBounds.Width.ToString();
+                    _launchArgsHeight = displayArea.OuterBounds.Height.ToString();
+                }
+                else
+                {
+                    _launchArgsWidth = "1920";
+                    _launchArgsHeight = "1080";
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"获取屏幕分辨率失败: {ex.Message}，使用默认值。");
+                _launchArgsWidth = "1920";
+                _launchArgsHeight = "1080";
+            }
+        }
+
         private Task LoadBackgroundCachePathAsync()
         {
             try
@@ -387,6 +420,7 @@ namespace FufuLauncher.ViewModels
             
             _ = _localSettingsService.SaveSettingAsync("GlobalBackgroundImageOpacity", clamped);
             WeakReferenceMessenger.Default.Send(new BackgroundImageOpacityChangedMessage(clamped));
+<<<<<<< HEAD
         }
         
         private async Task RequestRestartAsync(string title = "设置已更改")
@@ -417,6 +451,8 @@ namespace FufuLauncher.ViewModels
             {
                 Debug.WriteLine($"显示重启对话框失败: {ex.Message}");
             }
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         }
 
         partial void OnPanelBackgroundOpacityChanged(double value)
@@ -629,19 +665,45 @@ namespace FufuLauncher.ViewModels
         {
             Debug.WriteLine($"SettingsViewModel: 保存服务器设置 {value}");
             _ = _localSettingsService.SaveSettingAsync(LocalSettingsService.BackgroundServerKey, (int)value);
+<<<<<<< HEAD
 
             // Background refresh is enough; do not re-init main page.
             WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
 
             _ = RequestRestartAsync("背景服务器已更改");
+=======
+            
+            WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+            if (IsBackgroundEnabled)
+            {
+                _ = RefreshMainPageBackground();
+            }
+            
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         }
 
         partial void OnIsBackgroundEnabledChanged(bool value)
         {
+<<<<<<< HEAD
             Debug.WriteLine($"SettingsViewModel: 保存自定义背景开关 {value}");
 
             // Avoid race: persist first, then refresh so `MainWindow.LoadGlobalBackgroundAsync` reads the latest value.
             _ = ApplyCustomBackgroundToggleAsync(value);
+=======
+            Debug.WriteLine($"SettingsViewModel: 保存背景开关 {value}");
+            _ = _localSettingsService.SaveSettingAsync(LocalSettingsService.IsBackgroundEnabledKey, value);
+            
+            WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+            if (!value)
+            {
+                _backgroundRenderer.ClearBackground();
+            }
+            else
+            {
+                _ = RefreshMainPageBackground();
+            }
+            
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         }
 
         private async Task ApplyCustomBackgroundToggleAsync(bool value)
@@ -660,6 +722,7 @@ namespace FufuLauncher.ViewModels
         }
         partial void OnIsGlobalBackgroundEnabledChanged(bool value)
         {
+<<<<<<< HEAD
             // Deprecated: background is always global.
             if (IsGlobalBackgroundEnabled != true)
             {
@@ -667,8 +730,14 @@ namespace FufuLauncher.ViewModels
             }
 
             _ = _localSettingsService.SaveSettingAsync("UseGlobalBackground", true);
+=======
+            Debug.WriteLine($"SettingsViewModel: 保存全局背景开关 {value}");
+            _ = _localSettingsService.SaveSettingAsync("UseGlobalBackground", value);
+            
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
             WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
             _ = RefreshMainPageBackground();
+            
         }
         
         partial void OnIsShortTermSupportEnabledChanged(bool value)
@@ -825,6 +894,11 @@ namespace FufuLauncher.ViewModels
                     }
 
                     WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+<<<<<<< HEAD
+=======
+                    await RefreshMainPageBackground();
+                    
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
                 }
             }
             catch (Exception ex)
@@ -843,6 +917,11 @@ namespace FufuLauncher.ViewModels
 
                 _backgroundRenderer.ClearCustomBackground();
                 WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+<<<<<<< HEAD
+=======
+                await RefreshMainPageBackground();
+                
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
             }
             catch (Exception ex)
             {

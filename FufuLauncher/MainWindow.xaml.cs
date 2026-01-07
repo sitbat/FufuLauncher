@@ -34,6 +34,7 @@ public sealed partial class MainWindow : WindowEx
     private readonly IBackgroundRenderer _backgroundRenderer;
     private readonly ILocalSettingsService _localSettingsService;
     private MediaPlayer? _globalBackgroundPlayer;
+<<<<<<< HEAD
     private double _frameBackgroundOpacity = 0.0;
     private bool _minimizeToTray;
     private bool _isExit;
@@ -53,6 +54,22 @@ public sealed partial class MainWindow : WindowEx
 
     // 新增字段：标记窗口是否已在首次显示时居中
     private bool _hasCenteredOnFirstShow = false;
+=======
+    private double _frameBackgroundOpacity;
+    private bool _minimizeToTray;
+    private bool _isExit;
+    private bool _isOverlayShown;
+    
+    private bool _isVideoBackground;
+    
+    private DispatcherTimer _networkCheckTimer;
+    private DispatcherTimer _messageDismissTimer;
+    private bool? _lastNetworkAvailable;
+    private bool? _lastProxyEnabled;
+    private bool _isSystemMessageVisible;
+    
+    private bool _isMainUiLoaded;
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
 
     [DllImport("advapi32.dll", SetLastError = true)]
     private static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
@@ -70,9 +87,13 @@ public sealed partial class MainWindow : WindowEx
     
     private enum TOKEN_ELEVATION_TYPE
     {
+<<<<<<< HEAD
         TokenElevationTypeDefault = 1,
         TokenElevationTypeFull = 2,
         TokenElevationTypeLimited = 3
+=======
+        TokenElevationTypeFull = 2
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
     }
 
     public IRelayCommand ShowWindowCommand { get; }
@@ -164,6 +185,7 @@ public sealed partial class MainWindow : WindowEx
         
         dispatcherQueue.TryEnqueue(async () => await LoadBackgroundImageOpacityAsync());
         Activated += OnWindowActivated;
+<<<<<<< HEAD
         Activated += CenterOnFirstActivated;
         
         dispatcherQueue.TryEnqueue(() => CheckAndWarnUacElevation());
@@ -192,6 +214,26 @@ public sealed partial class MainWindow : WindowEx
         if (!_isMainUiLoaded) return;
 
         // 在后台线程检测，避免卡顿 UI
+=======
+        
+        dispatcherQueue.TryEnqueue(() => CheckAndWarnUacElevation());
+
+        SizeChanged += MainWindow_SizeChanged;
+        
+        UpdateBackgroundOverlayTheme();
+        
+        _messageDismissTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        _messageDismissTimer.Tick += (s, e) => HideSystemMessage();
+        _networkCheckTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+        _networkCheckTimer.Tick += (s, e) => CheckNetworkAndProxyStatus();
+        
+    }
+    
+    private async void CheckNetworkAndProxyStatus()
+    {
+        if (!_isMainUiLoaded) return;
+        
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         var (currentNetwork, currentProxy) = await Task.Run(() => 
         {
             bool isNet = NetworkInterface.GetIsNetworkAvailable();
@@ -213,8 +255,12 @@ public sealed partial class MainWindow : WindowEx
         string msg = "";
         string icon = "";
         Color color = Colors.White;
+<<<<<<< HEAD
 
         // 1. 检测是否刚断网 (当前断网，且上次状态是“有网”或者是“刚启动未知”)
+=======
+        
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         if (!currentNetwork && (_lastNetworkAvailable == null || _lastNetworkAvailable == true))
         {
             shouldNotify = true;
@@ -222,7 +268,10 @@ public sealed partial class MainWindow : WindowEx
             icon = "\uEB55";
             color = Colors.OrangeRed;
         }
+<<<<<<< HEAD
         // 2. 检测是否刚开启代理 (当前有网且有代理，且上次状态是“无代理”或者是“刚启动未知”)
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         else if (currentNetwork && currentProxy && (_lastProxyEnabled == null || _lastProxyEnabled == false))
         {
             shouldNotify = true;
@@ -230,17 +279,25 @@ public sealed partial class MainWindow : WindowEx
             icon = "\uE12B"; 
             color = Colors.DodgerBlue;
         }
+<<<<<<< HEAD
 
         // 更新状态记录
         _lastNetworkAvailable = currentNetwork;
         _lastProxyEnabled = currentProxy;
 
         // 如果需要通知，显示悬浮条（会自动收回）
+=======
+        
+        _lastNetworkAvailable = currentNetwork;
+        _lastProxyEnabled = currentProxy;
+        
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         if (shouldNotify)
         {
             ShowAutoDismissMessage(msg, icon, color);
         }
     }
+<<<<<<< HEAD
 
     // 【新增】显示并自动收回消息条
     private void ShowAutoDismissMessage(string message, string iconGlyph, Color iconColor)
@@ -262,11 +319,31 @@ public sealed partial class MainWindow : WindowEx
         _messageDismissTimer.Start();
 
         // 如果已经在显示，不需要重新播放滑入动画，只需更新文字和重置计时器
+=======
+    
+    private void ShowAutoDismissMessage(string message, string iconGlyph, Color iconColor)
+    {
+        if (!_isMainUiLoaded) return;
+        
+        if (SystemMessageBar.Visibility == Visibility.Collapsed)
+            SystemMessageBar.Visibility = Visibility.Visible;
+        
+        SystemMessageText.Text = message;
+        SystemMessageIcon.Glyph = iconGlyph;
+        SystemMessageIcon.Foreground = new SolidColorBrush(iconColor);
+        
+        _messageDismissTimer.Stop();
+        _messageDismissTimer.Start();
+        
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         if (_isSystemMessageVisible) return;
 
         _isSystemMessageVisible = true;
         
+<<<<<<< HEAD
         // 滑入动画 (Slide Up)
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         var anim = new DoubleAnimation
         {
             From = 100,
@@ -280,16 +357,24 @@ public sealed partial class MainWindow : WindowEx
         sb.Children.Add(anim);
         sb.Begin();
     }
+<<<<<<< HEAD
 
     // 【新增】隐藏消息条 (由计时器触发)
+=======
+    
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
     private void HideSystemMessage()
     {
         _messageDismissTimer.Stop();
         
         if (!_isSystemMessageVisible) return;
         _isSystemMessageVisible = false;
+<<<<<<< HEAD
 
         // 滑出动画 (Slide Down)
+=======
+        
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
         var anim = new DoubleAnimation
         {
             From = 0,
@@ -499,7 +584,10 @@ public sealed partial class MainWindow : WindowEx
                 PageBackgroundOverlay.Background = acrylic;
             }
             
+<<<<<<< HEAD
             // 更新悬浮条的 Acrylic 背景以适配主题
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
             if (SystemMessageBar.Children.Count > 0 && SystemMessageBar.Children[0] is Border msgBorder && msgBorder.Background is AcrylicBrush msgAcrylic)
             {
                 msgAcrylic.TintColor = currentTheme == ElementTheme.Dark ? Colors.Black : Colors.White;
@@ -537,6 +625,7 @@ public sealed partial class MainWindow : WindowEx
         {
             var globalBgSetting = await _localSettingsService.ReadSettingAsync("UseGlobalBackground");
             bool useGlobalBg = globalBgSetting == null ? true : Convert.ToBoolean(globalBgSetting);
+<<<<<<< HEAD
             Debug.WriteLine($"[Background] LoadGlobalBackgroundAsync: UseGlobalBackground={useGlobalBg}");
             if (!useGlobalBg) { await ClearGlobalBackgroundAsync(); return; }
 
@@ -557,6 +646,23 @@ public sealed partial class MainWindow : WindowEx
                     return;
                 }
             }
+=======
+            if (!useGlobalBg) { await ClearGlobalBackgroundAsync(); return; }
+
+            var customPathObj = await _localSettingsService.ReadSettingAsync("CustomBackgroundPath");
+            var customPath = customPathObj?.ToString();
+            
+            if (!string.IsNullOrEmpty(customPath) && File.Exists(customPath))
+            {
+                var customResult = await _backgroundRenderer.GetCustomBackgroundAsync(customPath);
+                await ApplyGlobalBackgroundAsync(customResult);
+                return;
+            }
+
+            var enabledJson = await _localSettingsService.ReadSettingAsync(LocalSettingsService.IsBackgroundEnabledKey);
+            bool isEnabled = enabledJson == null ? true : Convert.ToBoolean(enabledJson);
+            if (!isEnabled) { await ClearGlobalBackgroundAsync(); return; }
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
 
             var preferVideoSetting = await _localSettingsService.ReadSettingAsync("UserPreferVideoBackground");
             bool preferVideo = preferVideoSetting != null && Convert.ToBoolean(preferVideoSetting);
@@ -569,11 +675,15 @@ public sealed partial class MainWindow : WindowEx
             var result = await _backgroundRenderer.GetBackgroundAsync(server, preferVideo);
             await ApplyGlobalBackgroundAsync(result);
         }
+<<<<<<< HEAD
         catch (Exception ex)
         {
             Debug.WriteLine($"[Background] LoadGlobalBackgroundAsync failed: {ex.Message}");
             await ClearGlobalBackgroundAsync();
         }
+=======
+        catch { await ClearGlobalBackgroundAsync(); }
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
     }
 
     private Task ApplyGlobalBackgroundAsync(BackgroundRenderResult? result)
@@ -586,10 +696,13 @@ public sealed partial class MainWindow : WindowEx
             {
                 _isVideoBackground = true;
                 GlobalBackgroundImage.Visibility = Visibility.Collapsed;
+<<<<<<< HEAD
 
                 // Detach any previous player from the element before swapping.
                 try { GlobalBackgroundVideo.SetMediaPlayer(null); } catch { }
 
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
                 _globalBackgroundPlayer?.Pause();
                 _globalBackgroundPlayer?.Dispose();
 
@@ -606,6 +719,7 @@ public sealed partial class MainWindow : WindowEx
             else
             {
                 _isVideoBackground = false;
+<<<<<<< HEAD
 
                 try { GlobalBackgroundVideo.SetMediaPlayer(null); } catch { }
 
@@ -613,6 +727,9 @@ public sealed partial class MainWindow : WindowEx
                 _globalBackgroundPlayer?.Dispose();
                 _globalBackgroundPlayer = null;
 
+=======
+                _globalBackgroundPlayer?.Pause();
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
                 GlobalBackgroundVideo.Visibility = Visibility.Collapsed;
                 GlobalBackgroundImage.Source = result.ImageSource;
                 GlobalBackgroundImage.Visibility = Visibility.Visible;
@@ -696,6 +813,7 @@ public sealed partial class MainWindow : WindowEx
         }
         catch { }
         Activated -= OnWindowActivated;
+<<<<<<< HEAD
     }
 
     private void CenterOnFirstActivated(object sender, WindowActivatedEventArgs args)
@@ -709,6 +827,8 @@ public sealed partial class MainWindow : WindowEx
         _hasCenteredOnFirstShow = true;
         CenterWindowOnCurrentScreen();
         Activated -= CenterOnFirstActivated;
+=======
+>>>>>>> e479bcb4a0327b3eb023564baa2b34cd444bd279
     }
 
     private void UpdateTitleBarWithAdminStatus()
