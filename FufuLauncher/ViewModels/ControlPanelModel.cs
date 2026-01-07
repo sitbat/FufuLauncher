@@ -4,7 +4,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using FufuLauncher.Models;
+using FufuLauncher.Views;
 
 namespace FufuLauncher.ViewModels;
 
@@ -14,7 +16,11 @@ public partial class ControlPanelModel : ObservableObject
     private const int ServerPort = 12345;
     private const string TargetProcessName = "yuanshen";
     private const string TargetProcessNameAlt = "GenshinImpact";
-
+    
+    private const string HotSwitchDllName = "input_hot_switch.dll";
+    private const string HotSwitchDllDisabledName = "input_hot_switch.dll.disabled";
+    private readonly string _baseDirectory;
+    
     private UdpClient? _udpClient;
     private IPEndPoint? _remoteEndPoint;
     private readonly string _configPath;
@@ -40,7 +46,22 @@ public partial class ControlPanelModel : ObservableObject
     
     [ObservableProperty]
     private bool _enableFovCutsceneFix;
+    
+    [ObservableProperty]
+    private bool _disableInputHotSwitch;
+    
+    [RelayCommand]
+    private void OpenDiagnosticsWindow()
+    {
+        var window = new DiagnosticsWindow();
+        window.Activate();
+    }
 
+    partial void OnDisableInputHotSwitchChanged(bool value)
+    {
+        ToggleInputHotSwitchDll(value);
+    }
+    
     partial void OnEnableFovCutsceneFixChanged(bool value)
     {
         SendCommand(value ? "enable_fov_cutscene_fix" : "disable_fov_cutscene_fix");
@@ -58,6 +79,7 @@ public partial class ControlPanelModel : ObservableObject
         _configPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "fufu", "FufuConfig.cfg");
         _cancellationTokenSource = new CancellationTokenSource();
         _playTimeData = new Dictionary<string, long>();
+        _baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
 
         try
         {
@@ -69,11 +91,53 @@ public partial class ControlPanelModel : ObservableObject
         {
             Debug.WriteLine($"[UDP] Init Error: {ex.Message}");
         }
+        
+        string normalPath = Path.Combine(_baseDirectory, HotSwitchDllName);
+        string disabledPath = Path.Combine(_baseDirectory, HotSwitchDllDisabledName);
+        
+        if (File.Exists(disabledPath) && !File.Exists(normalPath))
+        {
+            _disableInputHotSwitch = true;
+        }
+        else
+        {
+            _disableInputHotSwitch = false;
+        }
 
         _ = StartConnectionLoopAsync(_cancellationTokenSource.Token);
         LoadConfig();
 
         _ = StartGameMonitoringLoopAsync(_cancellationTokenSource.Token);
+    }
+    
+    private void ToggleInputHotSwitchDll(bool disable)
+    {
+        string normalPath = Path.Combine(_baseDirectory, HotSwitchDllName);
+        string disabledPath = Path.Combine(_baseDirectory, HotSwitchDllDisabledName);
+
+        try
+        {
+            if (disable)
+            {
+                if (File.Exists(normalPath))
+                {
+                    if (File.Exists(disabledPath)) File.Delete(disabledPath);
+                    File.Move(normalPath, disabledPath);
+                }
+            }
+            else
+            {
+                if (File.Exists(disabledPath))
+                {
+                    if (File.Exists(normalPath)) File.Delete(normalPath);
+                    File.Move(disabledPath, normalPath);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[FileOp] Error toggling dll: {ex.Message}");
+        }
     }
     
     [ObservableProperty]

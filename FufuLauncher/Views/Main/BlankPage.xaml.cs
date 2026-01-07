@@ -5,11 +5,13 @@ using CommunityToolkit.Mvvm.Messaging;
 using FufuLauncher.Contracts.Services;
 using FufuLauncher.Helpers;
 using FufuLauncher.Messages;
-using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.Storage.Pickers;
+using Microsoft.UI;
+using Microsoft.UI.Windowing;
+using Microsoft.UI.Xaml.Data;
 using WinRT.Interop;
 
 public class GameAccountData
@@ -24,8 +26,28 @@ public class GameAccountData
     {
         get; set;
     }
+    public string? Remark { get; set; }
+    
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string DisplayName => string.IsNullOrWhiteSpace(Remark) ? Name : Remark;
 }
+public class RedeemCodeItem
+{
+    [System.Text.Json.Serialization.JsonPropertyName("title")]
+    public string Title { get; set; } = string.Empty;
 
+    [System.Text.Json.Serialization.JsonPropertyName("content")]
+    public string Content { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("time")]
+    public string Time { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonPropertyName("codes")]
+    public List<string> Codes { get; set; } = new List<string>();
+
+    [System.Text.Json.Serialization.JsonPropertyName("valid")]
+    public string Valid { get; set; } = string.Empty;
+}
 public class GameConfigData
 {
     public string GamePath { get; set; } = string.Empty;
@@ -36,6 +58,23 @@ public class GameConfigData
 
 namespace FufuLauncher.Views
 {
+    
+    public class StringToInitialConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, string language)
+        {
+            if (value is string name && !string.IsNullOrEmpty(name))
+            {
+                return name.Substring(0, 1).ToUpper();
+            }
+            return "?";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        {
+            throw new NotImplementedException();
+        }
+    }
     public sealed partial class BlankPage : Page
     {
         private GameConfigData? _currentConfig;
@@ -61,9 +100,350 @@ namespace FufuLauncher.Views
             }
         }
 
+        private async Task LoadRedeemCodesAsync()
+        {
+            try
+            {
+                CodesLoadingRing.IsActive = true;
+                CodesLoadingRing.Visibility = Visibility.Visible;
+                NoCodesText.Visibility = Visibility.Collapsed;
+                RedeemCodesList.Visibility = Visibility.Collapsed;
+
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+        
+                var json = await client.GetStringAsync("https://cnb.cool/bettergi/genshin-redeem-code/-/git/raw/main/codes.json");
+                
+                var options = new JsonSerializerOptions 
+                { 
+                    PropertyNameCaseInsensitive = true,
+                    AllowTrailingCommas = true,
+                    ReadCommentHandling = JsonCommentHandling.Skip
+                };
+
+                var codes = JsonSerializer.Deserialize<List<RedeemCodeItem>>(json, options);
+
+                if (codes != null && codes.Count > 0)
+                {
+                    RedeemCodesList.ItemsSource = codes;
+                    RedeemCodesList.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    NoCodesText.Text = "当前没有新的兑换码";
+                    NoCodesText.Visibility = Visibility.Visible;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[RedeemCodes] 获取失败: {ex.Message}");
+                NoCodesText.Text = "获取失败，请检查网络";
+                NoCodesText.Visibility = Visibility.Visible;
+            }
+            finally
+            {
+                CodesLoadingRing.IsActive = false;
+                CodesLoadingRing.Visibility = Visibility.Collapsed;
+            }
+        }
+        
+        private void ToggleCodes_Click(object sender, RoutedEventArgs e)
+        {
+            if (RedeemContentPanel.Visibility == Visibility.Visible)
+            {
+                RedeemContentPanel.Visibility = Visibility.Collapsed;
+                RedeemChevron.Glyph = "\uE70D"; // ChevronDown
+            }
+            else
+            {
+                RedeemContentPanel.Visibility = Visibility.Visible;
+                RedeemChevron.Glyph = "\uE70E"; // ChevronUp
+            }
+        }
+
+        private void CopyCode_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.Tag is string code)
+            {
+                var package = new Windows.ApplicationModel.DataTransfer.DataPackage();
+                package.SetText(code);
+                Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(package);
+                
+                var originalContent = btn.Content;
+                btn.Content = "已复制";
+                btn.IsEnabled = false;
+                
+                Task.Delay(1000).ContinueWith(_ => 
+                {
+                    DispatcherQueue.TryEnqueue(() => 
+                    {
+                        btn.Content = originalContent;
+                        btn.IsEnabled = true;
+                    });
+                });
+            }
+        }
+
         private async void ApplyPath_Click(object sender, RoutedEventArgs e)
         {
             await ProcessPathInput(PathTextBox.Text.Trim());
+        }
+        
+        private void DownloadGame_Click(object sender, RoutedEventArgs e)
+        {
+
+            string targetPath = _currentConfig?.GamePath;
+
+
+            if (string.IsNullOrWhiteSpace(targetPath))
+            {
+                targetPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Genshin Game");
+            }
+
+
+            if (!Directory.Exists(targetPath))
+            {
+                try 
+                {
+                    Directory.CreateDirectory(targetPath);
+                }
+                catch (Exception ex)
+                {
+                    var dialog = new ContentDialog
+                    {
+                        Title = "路径错误",
+                        Content = $"无法创建游戏目录: {targetPath}\n错误: {ex.Message}",
+                        CloseButtonText = "确定",
+                        XamlRoot = this.XamlRoot
+                    };
+                    _ = dialog.ShowAsync();
+                    return;
+                }
+            }
+
+
+            var downloadWindow = new FufuLauncher.Views.DownloadWindow(targetPath);
+            downloadWindow.Activate();
+        }
+        private async void SwitchServer_Click(object sender, RoutedEventArgs e)
+        {
+            if (_currentConfig == null || string.IsNullOrEmpty(_currentConfig.GamePath))
+            {
+                await ShowError("未找到游戏路径，请先在设置中指定游戏位置。");
+                return;
+            }
+            
+            string gameDir = _currentConfig.GamePath;
+            
+            if (File.Exists(gameDir))
+            {
+                gameDir = Path.GetDirectoryName(gameDir) ?? gameDir;
+            }
+            
+            string configPath = Path.Combine(gameDir, "config.ini");
+            
+            if (!File.Exists(configPath))
+            {
+                string parentDir = Directory.GetParent(gameDir)?.FullName ?? "";
+                string parentConfig = Path.Combine(parentDir, "config.ini");
+        
+                if (File.Exists(parentConfig))
+                {
+                    gameDir = parentDir;
+                    configPath = parentConfig;
+                }
+                else
+                {
+                    await ShowError($"无法找到 config.ini 配置文件。\n\n尝试寻找的路径是：\n{configPath}\n\n请检查您的“游戏路径”设置是否正确指向了游戏安装目录（包含 YuanShen.exe 的文件夹）。");
+                    return;
+                }
+            }
+            
+            var dialog = new ContentDialog
+            {
+                Title = "切换服务器",
+                Content = "请选择你要切换到的服务器：",
+                PrimaryButtonText = "切换到 Bilibili 服",
+                SecondaryButtonText = "切换到 官方服务器",
+                CloseButtonText = "取消",
+                XamlRoot = this.XamlRoot
+            };
+
+            var result = await dialog.ShowAsync();
+
+            if (result == ContentDialogResult.Primary)
+            {
+                await PerformServerSwitch(gameDir, configPath, true);
+            }
+            else if (result == ContentDialogResult.Secondary)
+            {
+                await PerformServerSwitch(gameDir, configPath, false);
+            }
+        }
+        private async Task PerformServerSwitch(string gameDir, string configPath, bool toBilibili)
+        {
+            try
+            {
+                // 官服: channel=1, sub_channel=1, cps=mihoyo
+                // B服: channel=14, sub_channel=0, cps=bilibili
+                string channel = toBilibili ? "14" : "1";
+                string subChannel = toBilibili ? "0" : "1";
+                string cps = toBilibili ? "bilibili" : "mihoyo";
+
+                string[] lines = await File.ReadAllLinesAsync(configPath);
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    if (lines[i].StartsWith("channel=")) lines[i] = $"channel={channel}";
+                    else if (lines[i].StartsWith("sub_channel=")) lines[i] = $"sub_channel={subChannel}";
+                    else if (lines[i].StartsWith("cps=")) lines[i] = $"cps={cps}";
+                }
+                await File.WriteAllLinesAsync(configPath, lines);
+
+                string dataDirName = "YuanShen_Data";
+                if (!Directory.Exists(Path.Combine(gameDir, dataDirName)))
+                {
+                    dataDirName = "GenshinImpact_Data";
+                }
+                
+                string pluginsDir = Path.Combine(gameDir, dataDirName, "Plugins");
+                string targetSdkPath = Path.Combine(pluginsDir, "PCGameSDK.dll");
+                
+                if (!Directory.Exists(pluginsDir)) Directory.CreateDirectory(pluginsDir);
+
+                if (toBilibili)
+                {
+                    string appBaseDir = AppContext.BaseDirectory; 
+                    string sourceSdkPath = Path.Combine(appBaseDir, "Assets", "PCGameSDK.dll");
+
+                    if (File.Exists(sourceSdkPath))
+                    {
+                        File.Copy(sourceSdkPath, targetSdkPath, true);
+                    }
+                    else
+                    {
+                        await ShowError($"缺失核心文件：{sourceSdkPath}\n请确保已将 PCGameSDK.dll 放入软件的 Assets 文件夹。");
+                        return;
+                    }
+                }
+                else
+                {
+                    if (File.Exists(targetSdkPath))
+                    {
+                        File.Delete(targetSdkPath);
+                    }
+                }
+                
+                await LoadGameConfig(_currentConfig.GamePath);
+                
+                var successDialog = new ContentDialog
+                {
+                    Title = "切换成功",
+                    Content = $"已成功切换至 {(toBilibili ? "Bilibili 服" : "官方服务器")}。\nSDK已{(toBilibili ? "部署" : "清理")}。",
+                    CloseButtonText = "确定",
+                    XamlRoot = this.XamlRoot
+                };
+                await successDialog.ShowAsync();
+
+            }
+            catch (Exception ex)
+            {
+                await ShowError($"切换失败: {ex.Message}");
+            }
+        }
+        
+        private async Task LoadGameConfig(string gameExePath)
+        {
+            if (string.IsNullOrEmpty(gameExePath) || !File.Exists(gameExePath)) return;
+
+            string gameDir = Path.GetDirectoryName(gameExePath);
+            string configPath = Path.Combine(gameDir, "config.ini");
+            string serverType = "未知服务器";
+            
+            if (File.Exists(configPath))
+            {
+                try 
+                {
+                    string[] lines = await File.ReadAllLinesAsync(configPath);
+                    string channel = "1";
+            
+                    foreach (var line in lines)
+                    {
+                        if (line.StartsWith("channel="))
+                        {
+                            channel = line.Split('=')[1].Trim();
+                            break;
+                        }
+                    }
+                    
+                    if (channel == "14") serverType = "Bilibili 服";
+                    else if (channel == "1") serverType = "官方服务器";
+                    else serverType = $"自定义/其他 (Channel: {channel})";
+                }
+                catch 
+                { 
+                    serverType = "读取配置文件失败"; 
+                }
+            }
+            
+            if (_currentConfig != null)
+            {
+                _currentConfig.ServerType = serverType;
+            }
+        }
+        
+        
+        private void OpenMap_Click(object sender, RoutedEventArgs e)
+        {
+            var newWindow = new Window();
+            newWindow.Title = "提瓦特大地图";
+            var hWnd = WindowNative.GetWindowHandle(newWindow);
+            var winId = Win32Interop.GetWindowIdFromWindow(hWnd);
+            var appWindow = AppWindow.GetFromWindowId(winId);
+            appWindow.Resize(new Windows.Graphics.SizeInt32(1280, 800));
+            
+            var rootFrame = new Frame();
+            rootFrame.Navigate(typeof(Views.MapPage), newWindow);
+            
+            newWindow.Content = rootFrame;
+            newWindow.Activate();
+        }
+
+        private async Task<bool> ValidateGameExecutableAsync(string path)
+        {
+            string cnExe = Path.Combine(path, "YuanShen.exe");
+            string globalExe = Path.Combine(path, "GenshinImpact.exe");
+            
+            if (File.Exists(cnExe))
+            {
+                return true;
+            }
+            else if (File.Exists(globalExe))
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "国际服客户端",
+                    Content = "注意：本启动器的注入功能主要是针对国服设计的。如果在国际服客户端上使用，可能无法生效或导致错误。\n\n是否继续使用此路径？",
+                    PrimaryButtonText = "继续使用",
+                    CloseButtonText = "放弃并清除",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = this.XamlRoot
+                };
+
+                var result = await dialog.ShowAsync();
+                return result == ContentDialogResult.Primary;
+            }
+            else
+            {
+                var dialog = new ContentDialog
+                {
+                    Title = "无效的游戏路径",
+                    Content = "在该路径下未找到游戏主程序 (YuanShen.exe 或 GenshinImpact.exe)。\n\n请确认您选择的是包含游戏可执行文件的安装目录。",
+                    CloseButtonText = "确定",
+                    XamlRoot = this.XamlRoot
+                };
+                await dialog.ShowAsync();
+                return false;
+            }
         }
 
         private async Task ProcessPathInput(string path)
@@ -78,11 +458,21 @@ namespace FufuLauncher.Views
             {
                 if (Directory.Exists(path))
                 {
-                    await LoadGameInfoAsync(path);
-                    await _localSettingsService.SaveSettingAsync("GameInstallationPath", path);
-                    WeakReferenceMessenger.Default.Send(new GamePathChangedMessage(path));
+                    bool isValid = await ValidateGameExecutableAsync(path);
 
-                    Debug.WriteLine($"[ApplyPath_Click] 手动输入路径成功: {path}");
+                    if (isValid)
+                    {
+                        await LoadGameInfoAsync(path);
+                        await _localSettingsService.SaveSettingAsync("GameInstallationPath", path);
+                        WeakReferenceMessenger.Default.Send(new GamePathChangedMessage(path));
+
+                        Debug.WriteLine($"[ProcessPathInput] 路径设置成功: {path}");
+                    }
+                    else
+                    {
+                        PathTextBox.Text = string.Empty;
+                        ShowEmptyState();
+                    }
                 }
                 else
                 {
@@ -94,10 +484,14 @@ namespace FufuLauncher.Views
                         XamlRoot = this.XamlRoot
                     };
                     await dialog.ShowAsync();
-
+                    
                     if (await _localSettingsService.ReadSettingAsync("GameInstallationPath") is string savedPath)
                     {
                         PathTextBox.Text = savedPath.Trim('"').Trim();
+                    }
+                    else
+                    {
+                        PathTextBox.Text = string.Empty;
                     }
                 }
             }
@@ -105,6 +499,9 @@ namespace FufuLauncher.Views
             {
                 Debug.WriteLine($"[ProcessPathInput] 处理失败: {ex.Message}");
                 await ShowError($"路径处理失败: {ex.Message}");
+                
+                PathTextBox.Text = string.Empty;
+                ShowEmptyState();
             }
         }
 
@@ -145,6 +542,7 @@ namespace FufuLauncher.Views
             {
                 Debug.WriteLine($"[BlankPage_Loaded] 加载失败: {ex.Message}");
             }
+            await LoadRedeemCodesAsync();
         }
 
         private async Task ShowAutoPathDialog(string foundPath)
@@ -196,11 +594,8 @@ namespace FufuLauncher.Views
             {
                 var path = folder.Path;
                 PathTextBox.Text = path;
-
-                await _localSettingsService.SaveSettingAsync("GameInstallationPath", path);
-                WeakReferenceMessenger.Default.Send(new GamePathChangedMessage(path));
-
-                await LoadGameInfoAsync(path);
+                await ProcessPathInput(path);
+        
                 return path;
             }
             return null;
@@ -316,17 +711,11 @@ namespace FufuLauncher.Views
                 });
             }
         }
+        
 
-        private async void OpenAnnouncement_Click(object sender, RoutedEventArgs e)
+        private void OpenAnnouncement_Click(object sender, RoutedEventArgs e)
         {
-            var announcementWindow = new Window { Title = "游戏公告" };
-            var webView = new Microsoft.UI.Xaml.Controls.WebView2();
-            announcementWindow.Closed += (s, args) => webView.Close();
-            announcementWindow.Content = webView;
-
-            await webView.EnsureCoreWebView2Async();
-            webView.Source = new Uri("https://sdk.mihoyo.com/hk4e/announcement/index.html?auth_appid=announcement&authkey_ver=1&bundle_id=hk4e_cn&channel_id=1&game=hk4e&game_biz=hk4e_cn&lang=zh-cn&level=60&platform=pc&region=cn_gf01&sdk_presentation_style=fullscreen&sdk_screen_transparent=true&sign_type=2&uid=100000000");
-
+            var announcementWindow = new FufuLauncher.Views.AnnouncementWindow();
             announcementWindow.Activate();
         }
 
@@ -351,10 +740,10 @@ namespace FufuLauncher.Views
         private string DetectServerType(string configContent)
         {
             if (configContent.Contains("pcadbdpz") || configContent.Contains("channel=1"))
-                return "中国大陆服务器（官服）";
+                return "中国大陆服务器";
 
             if (configContent.Contains("channel=14") || configContent.Contains("cps=bilibili"))
-                return "中国大陆服务器（B服）";
+                return "中国大陆服务器";
 
             if (configContent.Contains("os_usa") || configContent.Contains("os_euro") ||
                 configContent.Contains("os_asia") || configContent.Contains("channel=0"))
@@ -572,6 +961,65 @@ namespace FufuLauncher.Views
                 XamlRoot = this.XamlRoot
             };
             await dialog.ShowAsync();
+        }
+
+        private async void AccountName_DoubleTapped(object sender, Microsoft.UI.Xaml.Input.DoubleTappedRoutedEventArgs e)
+        {
+            try
+            {
+                if ((sender as TextBlock)?.DataContext is not GameAccountData account) return;
+
+                var textBox = new TextBox
+                {
+                    Text = account.Remark ?? account.Name,
+                    PlaceholderText = "输入备注名称",
+                    MaxLength = 30
+                };
+
+                var dialog = new ContentDialog
+                {
+                    Title = "设置备注",
+                    Content = textBox,
+                    PrimaryButtonText = "保存",
+                    SecondaryButtonText = "清除备注",
+                    CloseButtonText = "取消",
+                    DefaultButton = ContentDialogButton.Primary,
+                    XamlRoot = this.XamlRoot
+                };
+
+                var result = await dialog.ShowAsync();
+
+                if (result == ContentDialogResult.Primary)
+                {
+                    var newRemark = textBox.Text.Trim();
+                    if (!string.IsNullOrWhiteSpace(newRemark))
+                    {
+                        var accounts = await LoadAccountsFromFileAsync();
+                        var targetAccount = accounts.FirstOrDefault(a => a.Id == account.Id);
+                        if (targetAccount != null)
+                        {
+                            targetAccount.Remark = newRemark;
+                            await SaveAccountsToFileAsync(accounts);
+                            await LoadAccountsAsync();
+                        }
+                    }
+                }
+                else if (result == ContentDialogResult.Secondary)
+                {
+                    var accounts = await LoadAccountsFromFileAsync();
+                    var targetAccount = accounts.FirstOrDefault(a => a.Id == account.Id);
+                    if (targetAccount != null)
+                    {
+                        targetAccount.Remark = null;
+                        await SaveAccountsToFileAsync(accounts);
+                        await LoadAccountsAsync();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await ShowError($"设置备注失败: {ex.Message}");
+            }
         }
     }
 }

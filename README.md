@@ -1,12 +1,10 @@
 # [芙芙启动器](https://github.com/CodeCubist/FufuLauncher)
 
-![Version](https://img.shields.io/badge/Version-v1.0.3-blue)
+![Version](https://img.shields.io/badge/Version-v1.0.4-blue)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-brightgreen)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 
 ### 一个原神的第三方启动工具，支持游戏注入、自动签到和一些实用小功能。
-
-![启动器截图](https://youke2.picui.cn/s1/2025/12/16/6940312f3ce5d.png)
 
 ## 主要功能
 
@@ -30,16 +28,6 @@
 * 游戏路径**尽量别用管理员模式选**，选完再管理员运行
 * 注入功能需要以**管理员身份运行程序**
 * 自定义背景支持图片和视频文件，**动态视频背景不太稳定，图片正常**
-
-## 构建
-
-* 构建完成后将 `Install` 文件夹使用 `7z` 格式压缩
-* 下载 [FufuInstall](https://github.com/MarlonPullan6/FufuInstall) 将 `Install.7z` 替换
-* 使用 `Visual Studio 2026` 打开 `Install.slnx`
-* 项目配置:
-    * **PlatformToolset**：`v145`
-    * **C++ 标准**：`std:c++20`
-    * **MSVC 版本**：`v14.44`
 
 ## 说明
 

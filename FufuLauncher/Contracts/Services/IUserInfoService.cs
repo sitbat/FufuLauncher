@@ -17,6 +17,8 @@ public record UserInfo(
     string nickname,
     string introduce,
     string avatar_url,
+    int gender,
+    string ip_region,
     Dictionary<string, string> achieve
 );
 
@@ -31,6 +33,7 @@ public record GameRecordCardInfo(
     int level,
     List<GameDataItem> data
 );
+
 
 public record GameRecordCardData(List<GameRecordCardInfo> list);
 public record GameRecordCardResponse(int retcode, string message, GameRecordCardData? data);

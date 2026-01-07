@@ -33,6 +33,7 @@
         <PackageReference Include="Microsoft.WindowsAppSDK" Version="1.7.250606001" />
         <PackageReference Include="Microsoft.Xaml.Behaviors.WinUI.Managed" Version="3.0.0" />
         <PackageReference Include="PuppeteerSharp" Version="20.2.5" />
+        <PackageReference Include="System.Management" Version="10.0.1" />
         <PackageReference Include="WinUIEx" Version="2.6.0" />
         <PackageReference Include="YamlDotNet" Version="16.3.0" />
     </ItemGroup>
@@ -53,6 +54,14 @@
         <Content Include="..\FufuLauncher\nvhelper.dll">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <Link>nvhelper.dll</Link>
+        </Content>
+        <Content Include="..\FufuLauncher\input_hot_switch.dll">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>input_hot_switch.dll</Link>
+        </Content>
+        <Content Include="..\FufuLauncher\CaptureApp.exe">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+            <Link>CaptureApp.exe</Link>
         </Content>
     </ItemGroup>
 

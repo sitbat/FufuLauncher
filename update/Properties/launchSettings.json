@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "update (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "update (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

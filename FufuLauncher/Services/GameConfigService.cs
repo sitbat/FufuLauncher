@@ -116,10 +116,10 @@ public class GameConfigService : IGameConfigService
     {
 
         if (configContent.Contains("pcadbdpz") || configContent.Contains("channel=1"))
-            return "中国大陆服务器（官服）";
+            return "中国大陆服务器";
 
         if (configContent.Contains("channel=14") || configContent.Contains("cps=bilibili"))
-            return "中国大陆服务器（B服）";
+            return "中国大陆服务器";
 
         if (configContent.Contains("os_usa") || configContent.Contains("os_euro") ||
             configContent.Contains("os_asia") || configContent.Contains("channel=0"))

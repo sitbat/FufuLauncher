@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection;
 using System.Windows.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -63,10 +62,15 @@ namespace FufuLauncher.ViewModels
         [ObservableProperty] private bool _isShortTermSupportEnabled;
         [ObservableProperty] private bool _isBetterGIIntegrationEnabled;
         [ObservableProperty] private bool _isBetterGICloseOnExitEnabled;
+
+        // Background is global-only now; keep internal state always true for compatibility.
         [ObservableProperty] private bool _isGlobalBackgroundEnabled = true;
+
         [ObservableProperty] private double _globalBackgroundOverlayOpacity = 0.3;
         [ObservableProperty] private double _contentFrameBackgroundOpacity = 0.5;
         [ObservableProperty] private bool _isSaveWindowSizeEnabled;
+        [ObservableProperty] private double _globalBackgroundImageOpacity = 1.0;
+        [ObservableProperty] private bool _forceNonAdmin = true;
 
         public IAsyncRelayCommand OpenBackgroundCacheFolderCommand
         {
@@ -255,10 +259,12 @@ namespace FufuLauncher.ViewModels
             OnPropertyChanged(nameof(IsShortTermSupportEnabled));
             OnPropertyChanged(nameof(IsBetterGIIntegrationEnabled));
             OnPropertyChanged(nameof(IsBetterGICloseOnExitEnabled));
+            // IsGlobalBackgroundEnabled remains true for compatibility, but is no longer user-configurable.
             OnPropertyChanged(nameof(IsGlobalBackgroundEnabled));
             OnPropertyChanged(nameof(GlobalBackgroundOverlayOpacity));
             OnPropertyChanged(nameof(ContentFrameBackgroundOpacity));
             OnPropertyChanged(nameof(IsSaveWindowSizeEnabled));
+            OnPropertyChanged(nameof(ForceNonAdmin));
 
             _isInitializing = false;
         }
@@ -272,8 +278,9 @@ namespace FufuLauncher.ViewModels
             var enabledJson = await _localSettingsService.ReadSettingAsync(LocalSettingsService.IsBackgroundEnabledKey);
             IsBackgroundEnabled = enabledJson == null ? true : Convert.ToBoolean(enabledJson);
 
-            var globalBgJson = await _localSettingsService.ReadSettingAsync("UseGlobalBackground");
-            IsGlobalBackgroundEnabled = globalBgJson == null ? true : Convert.ToBoolean(globalBgJson);
+            // Global background is the only supported mode now.
+            IsGlobalBackgroundEnabled = true;
+            _ = _localSettingsService.SaveSettingAsync("UseGlobalBackground", true);
 
             var languageJson = await _localSettingsService.ReadSettingAsync("AppLanguage");
             int languageValue = languageJson != null ? Convert.ToInt32(languageJson) : 0;
@@ -345,7 +352,10 @@ namespace FufuLauncher.ViewModels
 
             var saveWindowSizeJson = await _localSettingsService.ReadSettingAsync("IsSaveWindowSizeEnabled");
             IsSaveWindowSizeEnabled = saveWindowSizeJson != null && Convert.ToBoolean(saveWindowSizeJson);
-            
+
+            var forceNonAdminJson = await _localSettingsService.ReadSettingAsync("ForceNonAdmin");
+            ForceNonAdmin = forceNonAdminJson == null ? true : Convert.ToBoolean(forceNonAdminJson);
+
             var panelOpacityJson = await _localSettingsService.ReadSettingAsync("PanelBackgroundOpacity");
             try
             {
@@ -354,6 +364,58 @@ namespace FufuLauncher.ViewModels
             catch
             {
                 PanelBackgroundOpacity = 0.5;
+            }
+            var bgImageOpacityJson = await _localSettingsService.ReadSettingAsync("GlobalBackgroundImageOpacity");
+            try
+            {
+                GlobalBackgroundImageOpacity = bgImageOpacityJson != null ? Convert.ToDouble(bgImageOpacityJson) : 1.0;
+            }
+            catch
+            {
+                GlobalBackgroundImageOpacity = 1.0;
+            }
+            
+        }
+        partial void OnGlobalBackgroundImageOpacityChanged(double value)
+        {
+            var clamped = Math.Clamp(value, 0.0, 1.0);
+            if (Math.Abs(clamped - value) > 0.0001)
+            {
+                GlobalBackgroundImageOpacity = clamped;
+                return;
+            }
+            
+            _ = _localSettingsService.SaveSettingAsync("GlobalBackgroundImageOpacity", clamped);
+            WeakReferenceMessenger.Default.Send(new BackgroundImageOpacityChangedMessage(clamped));
+        }
+        
+        private async Task RequestRestartAsync(string title = "设置已更改")
+        {
+            try
+            {
+                App.MainWindow.DispatcherQueue.TryEnqueue(async () =>
+                {
+                    var dialog = new ContentDialog
+                    {
+                        Title = title,
+                        Content = "是否需要重启？",
+                        PrimaryButtonText = "立即重启",
+                        CloseButtonText = "稍后",
+                        DefaultButton = ContentDialogButton.Primary,
+                        XamlRoot = App.MainWindow.Content.XamlRoot
+                    };
+
+                    var result = await dialog.ShowAsync();
+                    if (result == ContentDialogResult.Primary)
+                    {
+
+                        Microsoft.Windows.AppLifecycle.AppInstance.Restart(string.Empty);
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"显示重启对话框失败: {ex.Message}");
             }
         }
 
@@ -567,34 +629,44 @@ namespace FufuLauncher.ViewModels
         {
             Debug.WriteLine($"SettingsViewModel: 保存服务器设置 {value}");
             _ = _localSettingsService.SaveSettingAsync(LocalSettingsService.BackgroundServerKey, (int)value);
+
+            // Background refresh is enough; do not re-init main page.
             WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
 
-            if (IsBackgroundEnabled)
-            {
-                _ = RefreshMainPageBackground();
-            }
+            _ = RequestRestartAsync("背景服务器已更改");
         }
 
         partial void OnIsBackgroundEnabledChanged(bool value)
         {
-            Debug.WriteLine($"SettingsViewModel: 保存背景开关 {value}");
-            _ = _localSettingsService.SaveSettingAsync(LocalSettingsService.IsBackgroundEnabledKey, value);
-            WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+            Debug.WriteLine($"SettingsViewModel: 保存自定义背景开关 {value}");
 
-            if (!value)
-            {
-                _backgroundRenderer.ClearBackground();
-            }
-            else
-            {
-                _ = RefreshMainPageBackground();
-            }
+            // Avoid race: persist first, then refresh so `MainWindow.LoadGlobalBackgroundAsync` reads the latest value.
+            _ = ApplyCustomBackgroundToggleAsync(value);
         }
 
+        private async Task ApplyCustomBackgroundToggleAsync(bool value)
+        {
+            try
+            {
+                Debug.WriteLine($"[Settings] ApplyCustomBackgroundToggleAsync: saving IsBackgroundEnabled={value}");
+                await _localSettingsService.SaveSettingAsync(LocalSettingsService.IsBackgroundEnabledKey, value);
+                Debug.WriteLine("[Settings] ApplyCustomBackgroundToggleAsync: saved. Sending BackgroundRefreshMessage");
+                WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"保存自定义背景开关失败: {ex.Message}");
+            }
+        }
         partial void OnIsGlobalBackgroundEnabledChanged(bool value)
         {
-            Debug.WriteLine($"SettingsViewModel: 保存全局背景开关 {value}");
-            _ = _localSettingsService.SaveSettingAsync("UseGlobalBackground", value);
+            // Deprecated: background is always global.
+            if (IsGlobalBackgroundEnabled != true)
+            {
+                IsGlobalBackgroundEnabled = true;
+            }
+
+            _ = _localSettingsService.SaveSettingAsync("UseGlobalBackground", true);
             WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
             _ = RefreshMainPageBackground();
         }
@@ -651,6 +723,12 @@ namespace FufuLauncher.ViewModels
         {
             Debug.WriteLine($"SettingsViewModel: 保存窗口大小记忆设置 {value}");
             _ = _localSettingsService.SaveSettingAsync("IsSaveWindowSizeEnabled", value);
+        }
+
+        partial void OnForceNonAdminChanged(bool value)
+        {
+            Debug.WriteLine($"SettingsViewModel: 保存非管理员启动开关 {value}");
+            _ = _localSettingsService.SaveSettingAsync("ForceNonAdmin", value);
         }
  
          private async Task SwitchInjectionModuleAsync(bool enableShortTerm)
@@ -740,8 +818,13 @@ namespace FufuLauncher.ViewModels
                     HasCustomBackground = true;
                     await _localSettingsService.SaveSettingAsync<string>("CustomBackgroundPath", path);
 
+                    // If user just picked a custom background, ensure it will be used.
+                    if (!IsBackgroundEnabled)
+                    {
+                        IsBackgroundEnabled = true;
+                    }
+
                     WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
-                    await RefreshMainPageBackground();
                 }
             }
             catch (Exception ex)
@@ -760,7 +843,6 @@ namespace FufuLauncher.ViewModels
 
                 _backgroundRenderer.ClearCustomBackground();
                 WeakReferenceMessenger.Default.Send(new BackgroundRefreshMessage());
-                await RefreshMainPageBackground();
             }
             catch (Exception ex)
             {

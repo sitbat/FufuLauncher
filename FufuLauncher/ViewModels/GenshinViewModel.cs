@@ -20,20 +20,14 @@ public class GenshinViewModel : INotifyPropertyChanged
     public string Uid
     {
         get => _uid;
-        set
-        {
-            _uid = value; OnPropertyChanged();
-        }
+        set { _uid = value; OnPropertyChanged(); }
     }
 
     private string _nickname = string.Empty;
     public string Nickname
     {
         get => _nickname;
-        set
-        {
-            _nickname = value; OnPropertyChanged();
-        }
+        set { _nickname = value; OnPropertyChanged(); }
     }
 
     private TravelersDiarySummary? _travelersDiary;
@@ -42,42 +36,33 @@ public class GenshinViewModel : INotifyPropertyChanged
         get => _travelersDiary;
         set
         {
-            _travelersDiary = value; OnPropertyChanged();
+            _travelersDiary = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(FormattedDate));
+            OnPropertyChanged(nameof(FormattedMonthPrimogems));
+            OnPropertyChanged(nameof(FormattedMonthMora));
+            OnPropertyChanged(nameof(IncomeSources));
         }
     }
+    
+    public string FormattedDate => _travelersDiary?.Data?.Date ?? "--";
+    public string FormattedMonthPrimogems => _travelersDiary?.Data?.MonthData?.CurrentPrimogems.ToString("N0") ?? "0";
+    public string FormattedMonthMora => _travelersDiary?.Data?.MonthData?.CurrentMora.ToString("N0") ?? "0";
+
 
     private bool _isLoading;
     public bool IsLoading
     {
         get => _isLoading;
-        set
-        {
-            _isLoading = value; OnPropertyChanged();
-        }
+        set { _isLoading = value; OnPropertyChanged(); }
     }
 
     private string _statusMessage = "等待加载数据...";
     public string StatusMessage
     {
         get => _statusMessage;
-        set
-        {
-            _statusMessage = value; OnPropertyChanged();
-        }
+        set { _statusMessage = value; OnPropertyChanged(); }
     }
-
-    public string TodayPrimogems => $"今日原石: {TravelersDiary?.Data.DayData.CurrentPrimogems ?? 0} (+{TravelersDiary?.Data.DayData.CurrentPrimogems ?? 0 - (TravelersDiary?.Data.DayData.LastPrimogems ?? 0)})";
-    public string TodayMora => $"今日摩拉: {(TravelersDiary?.Data.DayData.CurrentMora ?? 0):N0}";
-
-    public string MonthPrimogems => $"本月原石: {(TravelersDiary?.Data.MonthData.CurrentPrimogems ?? 0):N0}";
-    public string MonthMora => $"本月摩拉: {(TravelersDiary?.Data.MonthData.CurrentMora ?? 0):N0}";
-
-    public string LastMonthPrimogems => $"上月同期: {(TravelersDiary?.Data.MonthData.LastPrimogems ?? 0):N0}";
-    public string LastMonthMora => $"上月同期: {(TravelersDiary?.Data.MonthData.LastMora ?? 0):N0}";
-
-    public string PrimogemsLevel => $"收入等级: Lv.{TravelersDiary?.Data.MonthData.CurrentPrimogemsLevel ?? 0}";
-    public string PrimogemsGrowth => $"原石增长率: {TravelersDiary?.Data.MonthData.PrimogemsRate ?? 0}%";
-    public string MoraGrowth => $"摩拉增长率: {TravelersDiary?.Data.MonthData.MoraRate ?? 0}%";
 
     public List<IncomeSourceViewModel> IncomeSources
     {
@@ -99,10 +84,7 @@ public class GenshinViewModel : INotifyPropertyChanged
         }
     }
 
-    public IAsyncRelayCommand LoadDataCommand
-    {
-        get;
-    }
+    public IAsyncRelayCommand LoadDataCommand { get; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
     protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
@@ -128,12 +110,12 @@ public class GenshinViewModel : INotifyPropertyChanged
         try
         {
             IsLoading = true;
-            StatusMessage = "正在加载旅行札记数据...";
+            StatusMessage = "正在连接米游社...";
 
             var configPath = Path.Combine(AppContext.BaseDirectory, "config.json");
             if (!File.Exists(configPath))
             {
-                StatusMessage = "错误：找不到配置文件，请先登录";
+                StatusMessage = "需先登录账号";
                 return;
             }
 
@@ -145,49 +127,33 @@ public class GenshinViewModel : INotifyPropertyChanged
 
             if (string.IsNullOrEmpty(config?.Account?.Cookie))
             {
-                StatusMessage = "错误：无效的登录信息";
+                StatusMessage = "登录信息无效";
                 return;
             }
 
             var cookie = config.Account.Cookie;
 
-            StatusMessage = "正在获取用户信息...";
+            StatusMessage = "获取角色信息...";
             var rolesResponse = await _userInfoService.GetUserGameRolesAsync(cookie);
             var role = rolesResponse?.data?.list?.FirstOrDefault();
 
             if (role == null)
             {
-                StatusMessage = "错误：无法获取角色信息";
+                StatusMessage = "无法获取角色";
                 return;
             }
 
             Uid = role.game_uid;
             Nickname = role.nickname;
 
-            StatusMessage = "正在加载旅行札记数据...";
+            StatusMessage = "分析旅行札记...";
             TravelersDiary = await _genshinService.GetTravelersDiarySummaryAsync(Uid, cookie, 12);
 
-            OnPropertyChanged(nameof(TodayPrimogems));
-            OnPropertyChanged(nameof(TodayMora));
-            OnPropertyChanged(nameof(MonthPrimogems));
-            OnPropertyChanged(nameof(MonthMora));
-            OnPropertyChanged(nameof(LastMonthPrimogems));
-            OnPropertyChanged(nameof(LastMonthMora));
-            OnPropertyChanged(nameof(PrimogemsLevel));
-            OnPropertyChanged(nameof(PrimogemsGrowth));
-            OnPropertyChanged(nameof(MoraGrowth));
-            OnPropertyChanged(nameof(IncomeSources));
-
-            StatusMessage = $"数据加载完成 - {Nickname} ({Uid})";
+            StatusMessage = $"";
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"加载旅行札记失败: {ex.Message}");
-            Debug.WriteLine($"堆栈: {ex.StackTrace}");
-            if (ex.InnerException != null)
-            {
-                Debug.WriteLine($"内部异常: {ex.InnerException.Message}");
-            }
+            Debug.WriteLine($"Error: {ex.Message}");
             StatusMessage = $"加载失败: {ex.Message}";
         }
         finally
@@ -200,14 +166,14 @@ public class GenshinViewModel : INotifyPropertyChanged
     {
         return actionId switch
         {
-            1 => "#FF6B6B",
-            3 => "#4ECDC4",
-            5 => "#45B7D1",
-            4 => "#96CEB4",
+            1 => "#FF7675",
+            2 => "#FAB1A0",
+            3 => "#74B9FF",
+            4 => "#55EFC4",
+            5 => "#81ECEC",
             6 => "#FFEAA7",
-            7 => "#DDA0DD",
-            2 => "#FFB347",
-            _ => "#95A5A6"
+            11 => "#A29BFE",
+            _ => "#B2BEC3"
         };
     }
 }
@@ -215,13 +181,8 @@ public class GenshinViewModel : INotifyPropertyChanged
 public class IncomeSourceViewModel
 {
     public string Action { get; set; } = "";
-    public int Num
-    {
-        get; set;
-    }
-    public int Percent
-    {
-        get; set;
-    }
+    public int Num { get; set; }
+    public int Percent { get; set; }
+    public string FormattedPercent => $"{Percent}%";
     public string Color { get; set; } = "#000000";
 }

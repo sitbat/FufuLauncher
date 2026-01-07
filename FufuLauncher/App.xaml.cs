@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+﻿﻿using System.Diagnostics;
 using System.Text.Json;
 using FufuLauncher.Activation;
 using FufuLauncher.Contracts.Services;
@@ -120,6 +120,10 @@ public partial class App : Application
                 services.AddSingleton<INotificationService, NotificationService>();
                 services.AddTransient<CalculatorViewModel>();
                 services.AddTransient<CalculatorPage>();
+                services.AddTransient<PluginViewModel>();
+                services.AddTransient<PluginPage>();
+                services.AddTransient<GachaViewModel>();
+                services.AddSingleton<GachaService>();
                 services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));
             })
             .Build();
@@ -133,6 +137,43 @@ public partial class App : Application
         {
             MainWindow.Activate();
         });
+    }
+    
+    private void LaunchLocalUpdater()
+    {
+        try
+        {
+            var baseDir = AppContext.BaseDirectory;
+            var updaterPath = Path.Combine(baseDir, "update", "update.exe");
+            
+            if (!File.Exists(updaterPath))
+            {
+                Debug.WriteLine($"[Updater] 未找到更新程序: {updaterPath}");
+                return;
+            }
+
+            Debug.WriteLine($"[Updater] 准备启动: {updaterPath}");
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = updaterPath,
+                Arguments = "1.0.5",
+                UseShellExecute = true,
+                Verb = "runas",
+                WorkingDirectory = Path.GetDirectoryName(updaterPath)
+            };
+
+            Process.Start(startInfo);
+            Debug.WriteLine("[Updater] 启动命令已发送");
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            Debug.WriteLine("[Updater] 用户取消了管理员授权或启动被拒绝。");
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Updater] 启动异常: {ex.Message}");
+        }
     }
 
     private void CurrentDomain_UnhandledException(object sender, System.UnhandledExceptionEventArgs e)
@@ -202,7 +243,9 @@ public partial class App : Application
             Debug.WriteLine("=== App 启动开始 ===");
 
             _mainDispatcherQueue = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
-
+            
+            _ = Task.Run(() => LaunchLocalUpdater());
+            
             await VerifyResourceFilesAsync();
             await ApplyLanguageSettingAsync();
 
@@ -351,14 +394,10 @@ public partial class App : Application
     {
         try 
         {
-            // 1. 创建 Windows App SDK 的 ResourceManager 实例
             var resourceManager = new Microsoft.Windows.ApplicationModel.Resources.ResourceManager();
 
-            // 2. 获取主资源映射 (MainResourceMap)
             var resourceMap = resourceManager.MainResourceMap;
 
-            // 3. 获取特定的资源子树 (通常是 "Resources/" 或直接在根目录下)
-            // 如果你的资源在 Resources.resw 中，通常直接用 GetValue 获取
             var resourceCandidate = resourceMap.GetValue("AppDisplayName");
     
             if (resourceCandidate != null)
