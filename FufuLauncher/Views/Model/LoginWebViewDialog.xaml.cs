@@ -20,7 +20,7 @@ public sealed partial class LoginWebViewDialog : Window
     public LoginWebViewDialog()
     {
         InitializeComponent();
-        
+
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         var windowId = Win32Interop.GetWindowIdFromWindow(hwnd);
         _appWindow = AppWindow.GetFromWindowId(windowId);
@@ -137,11 +137,19 @@ public sealed partial class LoginWebViewDialog : Window
 
     private async Task CheckAndSaveLoginStatus()
     {
-        if (_isChecking || _loginCompleted || LoginWebView?.CoreWebView2?.CookieManager == null)
+        try
+        {
+            if (_isChecking || _loginCompleted || LoginWebView?.CoreWebView2?.CookieManager == null)
+                return;
+
+            _isChecking = true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"准备检查登录状态失败: {ex.Message}");
+            _isChecking = false;
             return;
-
-        _isChecking = true;
-
+        }
         try
         {
             
@@ -170,6 +178,7 @@ public sealed partial class LoginWebViewDialog : Window
                     _autoCheckTimer.Stop();
                     
                     await Task.Delay(2000);
+                    await ClearMiyousheCookiesAsync();
                     Close();
                 }
             }
